@@ -98,8 +98,13 @@ int main() {
           *
           * Both are in between [-1, 1].
           */
+          // Re-cast x and y vectors as Eigen variables. 
+          // https://forum.kde.org/viewtopic.php?f=74&t=94839
+          Eigen::VectorXd x_pts = Eigen::VectorXd::Map(ptsx.data(), ptsx.size());
+          Eigen::VectorXd y_pts = Eigen::VectorXd::Map(ptsy.data(), ptsy.size());
+          
           // Get coefficients based on the existing track transmitted back from the simulator
-          Eigen::VectorXd coeffs = polyfit(ptsx,ptsy,2);
+          Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,2);
           // calculate cte
           double cte = polyeval(coeffs, px)-py;
           // calcualte orientation error
