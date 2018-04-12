@@ -114,7 +114,7 @@ int main() {
 
           auto sol=mpc.Solve(state,coeffs);
       
-          double steer_value = sol[0]/deg2rad(25);
+          double steer_value = -sol[0]/deg2rad(25);
           std::cout<<sol[1]<<std::endl;
           double throttle_value = sol[1];
 
@@ -134,6 +134,7 @@ int main() {
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
+          
           //Display the waypoints/reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
