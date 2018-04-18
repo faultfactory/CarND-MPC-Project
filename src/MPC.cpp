@@ -138,7 +138,7 @@ class FG_eval {
 MPC::MPC() {}
 MPC::~MPC() {}
 
-vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
+MPC_Output MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   bool ok = true;
   size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
@@ -255,5 +255,16 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
-  return {solution.x[delta_start],   solution.x[a_start]}; 
+    return solution.x; 
+};
+
+void MPC_Output::fill(CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> sol){
+  for(int i = 0;i<N;i++){this->X[i] = sol.x[i]};
+  for(int i = N;i<2*N;i++){this->Y[i] = sol.x[i]};
+  for(int i = 2*N;i<3*N;i++){this->PSI[i] = sol.x[i]};
+  for(int i = 3*N;i<4*N;i++){this->V[i] = sol.x[i]};
+  for(int i = 4*N;i<5*N;i++){this->CTE[i] = sol.x[i]};
+
+
+
 }

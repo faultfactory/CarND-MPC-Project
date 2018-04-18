@@ -3,6 +3,8 @@
 
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
+#include <cppad/cppad.hpp>
+#include <cppad/ipopt/solve.hpp>
 
 using namespace std;
 
@@ -17,4 +19,23 @@ class MPC {
   vector<double> Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
 };
 
+
+// define a class that takes the solution and disseminates the information for each field
+class MPC_Output{
+  public:
+  MPC_Output(int N);
+  ~MPC_Output();
+  void fill(CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)>);
+  int N; 
+  vector<double> X; 
+  vector<double> Y; 
+  vector<double> PSI; 
+  vector<double> V; 
+  vector<double> CTE; 
+  vector<double> EPSI;
+  vector<double> DELTA;
+  vector<double> A;
+};
+
 #endif /* MPC_H */
+
