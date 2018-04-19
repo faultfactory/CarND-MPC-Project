@@ -16,17 +16,17 @@ class MPC {
 
   // Solve the model given an initial state and polynomial coefficients.
   // Return the first actuatotions.
-  vector<double> Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
+  CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
 };
 
 
 // define a class that takes the solution and disseminates the information for each field
 class MPC_Output{
   public:
-  MPC_Output(int N);
-  ~MPC_Output();
+  MPC_Output();
+  ~MPC_Output(){};
   void fill(CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)>);
-  int N; 
+  size_t n; 
   vector<double> X; 
   vector<double> Y; 
   vector<double> PSI; 

@@ -111,12 +111,14 @@ int main() {
           double epsi = psi - (coeffs[1]+coeffs[2]*2*px);        
           Eigen::VectorXd state(6);
           state << px, py, psi, v, cte, epsi;
+          
+          MPC_Output out; 
+          out.fill(mpc.Solve(state,coeffs));
+          std::cout<<out.DELTA.size()<<std::endl;
+          double steer_value = -out.DELTA[0]/deg2rad(25);
 
-          auto sol=mpc.Solve(state,coeffs);
-      
-          double steer_value = -sol[0]/deg2rad(25);
-          std::cout<<sol[1]<<std::endl;
-          double throttle_value = sol[1];
+          
+          double throttle_value = out.A[1];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -126,7 +128,7 @@ int main() {
 
           //Display the MPC predicted trajectory 
           vector<double> mpc_x_vals;
-          vector<double> mpc_y_vals;
+          vector<double> mpc_y_vals;  
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line

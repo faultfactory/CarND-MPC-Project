@@ -6,7 +6,7 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 25;
+static size_t N = 25;
 double dt = 0.05;
 
 // This value assumes the model presented in the classroom is used.
@@ -138,7 +138,7 @@ class FG_eval {
 MPC::MPC() {}
 MPC::~MPC() {}
 
-MPC_Output MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
+CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   bool ok = true;
   size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
@@ -255,16 +255,24 @@ MPC_Output MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
-    return solution.x; 
+    return solution; 
 };
 
+MPC_Output::MPC_Output(){
+  this->n = N;
+  std::cout<<"size internal"<<this->n<<std::endl;
+}
+
 void MPC_Output::fill(CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> sol){
-  for(int i = 0;i<N;i++){this->X[i] = sol.x[i]};
-  for(int i = N;i<2*N;i++){this->Y[i] = sol.x[i]};
-  for(int i = 2*N;i<3*N;i++){this->PSI[i] = sol.x[i]};
-  for(int i = 3*N;i<4*N;i++){this->V[i] = sol.x[i]};
-  for(int i = 4*N;i<5*N;i++){this->CTE[i] = sol.x[i]};
-
-
-
+  std::cout<<sol.x.size()<<std::endl;
+  std::cout<<"starting_FILL"<<std::endl;
+  for(int i = 0;    i<n;    i++){this->X[i] = sol.x[i];std::cout<<i<<std::endl;}
+  for(int i = n;    i<2*n;  i++){this->Y[i] = sol.x[i];}
+  for(int i = 2*n;  i<3*n;  i++){this->PSI[i] = sol.x[i];}
+  for(int i = 3*n;  i<4*n;  i++){this->V[i] = sol.x[i];}
+  for(int i = 4*n;  i<5*n;  i++){this->CTE[i] = sol.x[i];}
+  for(int i = 5*n;  i<(6*n);i++){this->EPSI[i] = sol.x[i];}
+  for(int i = (6*n);i<(7*n-1);i++){this->DELTA[i] = sol.x[i];}
+  for(int i = (7*n-1);i<(8*n-2);i++){this->A[i]=sol.x[i];}
+  std::cout<<"COMPLETED_FILL"<<std::endl;
 }
