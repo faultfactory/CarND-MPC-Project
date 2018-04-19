@@ -266,13 +266,13 @@ MPC_Output::MPC_Output(){
 void MPC_Output::fill(CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> sol){
   std::cout<<sol.x.size()<<std::endl;
   std::cout<<"starting_FILL"<<std::endl;
-  for(int i = 0;    i<n;    i++){this->X[i] = sol.x[i];std::cout<<i<<std::endl;}
-  for(int i = n;    i<2*n;  i++){this->Y[i] = sol.x[i];}
-  for(int i = 2*n;  i<3*n;  i++){this->PSI[i] = sol.x[i];}
-  for(int i = 3*n;  i<4*n;  i++){this->V[i] = sol.x[i];}
-  for(int i = 4*n;  i<5*n;  i++){this->CTE[i] = sol.x[i];}
-  for(int i = 5*n;  i<(6*n);i++){this->EPSI[i] = sol.x[i];}
-  for(int i = (6*n);i<(7*n-1);i++){this->DELTA[i] = sol.x[i];}
-  for(int i = (7*n-1);i<(8*n-2);i++){this->A[i]=sol.x[i];}
+  for(int i = 0;    i<n;    i++){this->X.push_back(sol.x[i]);}
+  for(int i = n;    i<2*n;  i++){this->Y.push_back(sol.x[i]);}
+  for(int i = 2*n;  i<3*n;  i++){this->PSI.push_back(sol.x[i]);}
+  for(int i = 3*n;  i<4*n;  i++){this->V.push_back(sol.x[i]);}
+  for(int i = 4*n;  i<5*n;  i++){this->CTE.push_back(sol.x[i]);}
+  for(int i = 5*n;  i<(6*n);i++){this->EPSI.push_back(sol.x[i]);}
+  for(int i = (6*n);i<(7*n-1);i++){this->DELTA.push_back(sol.x[i]);}
+  for(int i = (7*n-1);i<(8*n-2);i++){this->A.push_back(sol.x[i]);}
   std::cout<<"COMPLETED_FILL"<<std::endl;
 }
