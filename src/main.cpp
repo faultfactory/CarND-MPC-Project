@@ -6,6 +6,7 @@
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
+#include "Eigen-3.3/Eigen/Geometry"
 #include "MPC.h"
 #include "json.hpp"
 
@@ -104,21 +105,20 @@ int main() {
           Eigen::VectorXd y_pts = Eigen::VectorXd::Map(ptsy.data(), ptsy.size());
           
           // Get coefficients based on the existing track transmitted back from the simulator
-          Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,2);
+          Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,3);
           // calculate cte
           double cte = polyeval(coeffs, px)-py;
           // calcualte orientation error
-          double epsi = psi - (coeffs[1]+coeffs[2]*2*px);        
+          double epsi = psi - (coeffs[1]+coeffs[2]*2*px+coeffs[3]*3*px*px);        
           Eigen::VectorXd state(6);
           state << px, py, psi, v, cte, epsi;
           
           MPC_Output out; 
           out.fill(mpc.Solve(state,coeffs));
-          std::cout<<out.DELTA.size()<<std::endl;
-          double steer_value = -out.DELTA[0]/deg2rad(25);
+          double steer_value = out.DELTA[2]/deg2rad(25);
 
           
-          double throttle_value = out.A[1];
+          double throttle_value = out.A[2];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -133,14 +133,46 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
 
+          vector<double> out_rot_x;
+          vector<double> out_rot_y;
+
+          for(int j=1;j<out.n;j++){
+            out_rot_x.push_back((out.X[j]-px)*cos(psi)+(out.Y[j]-py)*sin(psi));
+            out_rot_y.push_back(-(out.X[j]-px)*sin(psi)+(out.Y[j]-py)*cos(psi));
+          }
+          Eigen::VectorXd x_out = Eigen::VectorXd::Map(out_rot_x.data(), out_rot_x.size());
+          Eigen::VectorXd y_out = Eigen::VectorXd::Map(out_rot_y.data(), out_rot_y.size());
+
+          Eigen::VectorXd out_coeffs = polyfit(x_out,y_out,3);
+
+          for(int j=1;j<out.n;j++){
+            mpc_x_vals.push_back(j);
+            mpc_y_vals.push_back(polyeval(out_coeffs,double(j)));
+          }
+
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
-          
           //Display the waypoints/reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
+          vector<double> track_rot_x;
+          vector<double> track_rot_y;
+
+          for(int j=1;j<ptsx.size();j++){
+            track_rot_x.push_back((ptsx[j]-px)*cos(psi)+(ptsy[j]-py)*sin(psi));
+            track_rot_y.push_back(-(ptsx[j]-px)*sin(psi)+(ptsy[j]-py)*cos(psi));
+          }
+          Eigen::VectorXd x_trk = Eigen::VectorXd::Map(track_rot_x.data(), track_rot_x.size());
+          Eigen::VectorXd y_trk = Eigen::VectorXd::Map(track_rot_y.data(), track_rot_y.size());
+
+          Eigen::VectorXd track_coeffs = polyfit(x_trk,y_trk,3);
+
+          for(int j=1;j<out.n;j++){
+            next_x_vals.push_back(j);
+            next_y_vals.push_back(polyeval(track_coeffs,double(j)));
+          }
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
 
