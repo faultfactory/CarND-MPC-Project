@@ -93,8 +93,8 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
-          vector<double> vref_path_x;
-          vector<double> vref_path_y;
+          vector<double> vref_path_x(ptsx.size());
+          vector<double> vref_path_y(ptsy.size());
 
           // Performs Coordinate Transformation to place the 6 waypoint values into vehicle
           // coordinate frame. 
@@ -104,8 +104,8 @@ int main() {
             double shift_x=ptsx[i]-px;
             double shift_y=ptsy[i]-py;
 
-            vref_path_x.push_back((shift_x*cos(0-psi)-(shift_y)*sin(psi)));
-            vref_path_y.push_back((shift_x*sin(0-psi)+(shift_y)*cos(psi)));
+            vref_path_x[i]=(shift_x*cos(0-psi)-(shift_y)*sin(0-psi));
+            vref_path_y[i]=(shift_x*sin(0-psi)+(shift_y)*cos(0-psi));
           }
           
           /*
