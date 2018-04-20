@@ -93,41 +93,47 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
+          vector<double> vref_path_x;
+          vector<double> vref_path_y;
+
+          // Performs Coordinate Transformation to place the 6 waypoint values into vehicle
+          // coordinate frame. 
+
           for(int i = 0; i < ptsx.size();i++){
 
             double shift_x=ptsx[i]-px;
             double shift_y=ptsy[i]-py;
 
-            ptsx[i] = (shift)
+            vref_path_x.push_back((shift_x*cos(0-psi)+(shift_y-py)*sin(psi)));
+            vref_path_y.push_back(-(shift_x*sin(0-psi)+(shift_y-py)*cos(psi)));
           }
-
-
-
           
           /*
           * TODO: Calculate steering angle and throttle using MPC.
           *
           * Both are in between [-1, 1].
           */
-          // Re-cast x and y vectors as Eigen variables. 
+          // Re-cast x and y path vectors as Eigen variables. 
           // https://forum.kde.org/viewtopic.php?f=74&t=94839
-          Eigen::VectorXd x_pts = Eigen::VectorXd::Map(ptsx.data(), ptsx.size());
-          Eigen::VectorXd y_pts = Eigen::VectorXd::Map(ptsy.data(), ptsy.size());
+          Eigen::VectorXd x_pts = Eigen::VectorXd::Map(vref_path_x.data(),vref_path_x.size());
+          Eigen::VectorXd y_pts = Eigen::VectorXd::Map(vref_path_y.data(),vref_path_y.size());
           
-          // Get coefficients based on the existing track transmitted back from the simulator
+          // Get coefficients based on transformed track transmitted back from the simulator
           Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,3);
           // calculate cte
-          double cte = polyeval(coeffs, px)-py;
+          // since the transformed coordinates use the vehicle frame as the origin, px and py are
+          // considered to be zero. 
+          double cte = polyeval(coeffs, 0);
           // calcualte orientation error
-          double epsi = psi - (coeffs[1]+coeffs[2]*2*px+coeffs[3]*3*px*px);        
+          // psi is also assumed to be zero in our new coordinate frame. 
+          // the arc tangent of derivative of the polynomial evaluated at psi provides 
+          double epsi = -atan(coeffs[1]);
           Eigen::VectorXd state(6);
-          state << px, py, psi, v, cte, epsi;
+          state << 0, 0, 0, v, cte, epsi;
           
           MPC_Output out; 
           out.fill(mpc.Solve(state,coeffs));
-          double steer_value = out.DELTA[2]/deg2rad(25);
-
-          
+          double steer_value = -out.DELTA[2]/(deg2rad(25)*2.67);          
           double throttle_value = out.A[2];
 
           json msgJson;
@@ -143,21 +149,9 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
 
-          vector<double> out_rot_x;
-          vector<double> out_rot_y;
-
           for(int j=1;j<out.n;j++){
-            out_rot_x.push_back((out.X[j]-px)*cos(psi)+(out.Y[j]-py)*sin(psi));
-            out_rot_y.push_back(-(out.X[j]-px)*sin(psi)+(out.Y[j]-py)*cos(psi));
-          }
-          Eigen::VectorXd x_out = Eigen::VectorXd::Map(out_rot_x.data(), out_rot_x.size());
-          Eigen::VectorXd y_out = Eigen::VectorXd::Map(out_rot_y.data(), out_rot_y.size());
-
-          Eigen::VectorXd out_coeffs = polyfit(x_out,y_out,3);
-
-          for(int j=1;j<out.n;j++){
-            mpc_x_vals.push_back(j);
-            mpc_y_vals.push_back(polyeval(out_coeffs,double(j)));
+            mpc_x_vals.push_back(out.X[j]);
+            mpc_y_vals.push_back(out.Y[j]);
           }
 
           msgJson["mpc_x"] = mpc_x_vals;
@@ -167,21 +161,9 @@ int main() {
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
-          vector<double> track_rot_x;
-          vector<double> track_rot_y;
-
-          for(int j=1;j<ptsx.size();j++){
-            track_rot_x.push_back((ptsx[j]-px)*cos(psi)+(ptsy[j]-py)*sin(psi));
-            track_rot_y.push_back(-(ptsx[j]-px)*sin(psi)+(ptsy[j]-py)*cos(psi));
-          }
-          Eigen::VectorXd x_trk = Eigen::VectorXd::Map(track_rot_x.data(), track_rot_x.size());
-          Eigen::VectorXd y_trk = Eigen::VectorXd::Map(track_rot_y.data(), track_rot_y.size());
-
-          Eigen::VectorXd track_coeffs = polyfit(x_trk,y_trk,3);
-
           for(int j=1;j<out.n;j++){
             next_x_vals.push_back(j);
-            next_y_vals.push_back(polyeval(track_coeffs,double(j)));
+            next_y_vals.push_back(polyeval(coeffs,double(j)));
           }
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
