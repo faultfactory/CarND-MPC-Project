@@ -104,8 +104,8 @@ int main() {
             double shift_x=ptsx[i]-px;
             double shift_y=ptsy[i]-py;
 
-            vref_path_x.push_back((shift_x*cos(0-psi)+(shift_y-py)*sin(psi)));
-            vref_path_y.push_back(-(shift_x*sin(0-psi)+(shift_y-py)*cos(psi)));
+            vref_path_x.push_back((shift_x*cos(0-psi)-(shift_y)*sin(psi)));
+            vref_path_y.push_back((shift_x*sin(0-psi)+(shift_y)*cos(psi)));
           }
           
           /*
@@ -117,7 +117,6 @@ int main() {
           // https://forum.kde.org/viewtopic.php?f=74&t=94839
           Eigen::VectorXd x_pts = Eigen::VectorXd::Map(vref_path_x.data(),vref_path_x.size());
           Eigen::VectorXd y_pts = Eigen::VectorXd::Map(vref_path_y.data(),vref_path_y.size());
-          
           // Get coefficients based on transformed track transmitted back from the simulator
           Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,3);
           // calculate cte
@@ -162,8 +161,8 @@ int main() {
           vector<double> next_y_vals;
 
           for(int j=1;j<out.n;j++){
-            next_x_vals.push_back(j);
-            next_y_vals.push_back(polyeval(coeffs,double(j)));
+            next_x_vals.push_back(j*1.0);
+            next_y_vals.push_back(polyeval(coeffs,j*1.0));
           }
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
