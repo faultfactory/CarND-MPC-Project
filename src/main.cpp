@@ -92,6 +92,16 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
+          for(int i = 0; i < ptsx.size();i++){
+
+            double shift_x=ptsx[i]-px;
+            double shift_y=ptsy[i]-py;
+
+            ptsx[i] = (shift)
+          }
+
+
+
           
           /*
           * TODO: Calculate steering angle and throttle using MPC.
