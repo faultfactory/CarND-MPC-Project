@@ -2,12 +2,13 @@
 #include <cppad/cppad.hpp>
 #include <cppad/ipopt/solve.hpp>
 #include "Eigen-3.3/Eigen/Core"
+#include "Eigen-3.3/Eigen/QR"
 
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-static size_t N = 25;
-double dt = 0.05;
+static size_t N = 10;
+double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -23,7 +24,7 @@ const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
-double ref_v = 40;
+double ref_v = 70;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -43,29 +44,97 @@ class FG_eval {
   Eigen::VectorXd coeffs;
   FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
 
+
+
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
   void operator()(ADvector& fg, const ADvector& vars) {
    // The cost is stored is the first element of `fg`.
+   
     // Any additions to the cost should be added to `fg[0]`.
     fg[0] = 0;
-
+    
     // The part of the cost based on the reference state.
+    
     for (int t = 0; t < N; t++) {
-      fg[0] += 30*CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += 30* CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += 2*CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 2* CppAD::pow(vars[epsi_start + t], 2);
       fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+      std::cout<<"Velocity"<< AD<double>(vars[v_start+t])<<std::endl;
     }
-
+    
     // Minimize the use of actuators.
     for (int t = 0; t < N - 1; t++) {
-      fg[0] += 10*CppAD::pow(vars[delta_start + t], 2);
-      fg[0] += 10*CppAD::pow(vars[a_start + t], 2);
+      fg[0] += 1*CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 1*CppAD::pow(vars[a_start + t], 2);
     }
+    
+    // Penalize paths with small curvature to trend the system toward the racing line
+    // and reduce aggressive values for delta, especially in the beginning of the path
+    // Radius of curvature: 
+    // https://www.intmath.com/applications-differentiation/8-radius-curvature.php
+    // Rc = ([1+(dy/dx)^2]^(3/2))/abs(d2y/dx^2)
+
+    // Using CppAd instructions from: 
+    // https://coin-or.github.io/CppAD/doc/get_started.cpp.htm
+
+    // I have to generate a polynomial of the model-predicted candidate path from which to
+    // compute curvature.
+    Eigen::VectorXd x_mpc;
+    Eigen::VectorXd y_mpc;
+
+    for (int t=0;t<N;t++){
+      x_mpc<<(vars[x_start+t]);
+      y_mpc(vars[y_start+t]);
+    };
+    
+    // assert(x_mpc.size() == y_mpc.size());
+    // assert(3 >= 1 && 3 <= x_mpc.size() - 1);
+    // Eigen::MatrixXd A(x_mpc.size(), 3 + 1);
+
+    // for (int i = 0; i < x_mpc.size(); i++) {
+    //   A(i, 0) = 1.0;
+    // }
+
+    // for (int j = 0; j < x_mpc.size(); j++) {
+    //   for (int i = 0; i < 3; i++) {
+    //     A(j, i + 1) = A(j, i) * x_mpc(j);
+    //   }
+    // }
+
+    // auto Q = A.householderQr();
+    // auto result = Q.solve(y_mpc);
+
+    // //CppAD::Poly wants to see coeffs as a simple vector
+    // ADvector f;
+    
+    // for(int i=0;i<coeffs.size();i++){
+    //   f.push_back(AD<double>(coeffs[i]));
+    // }
+    
+
+
+    // //std::cout<<"f: "<<f<<std::endl;
+    // for(int t = 0; t<N; t++){
+    //   // compute value of derivative at this location
+    //   AD<double> dydx = CppAD::Poly(size_t(1),f,AD<double>(1.0*t));
+    //   // compute the value of the 2nd derivative at this point 
+
+    //   AD<double> d2ydx2 = CppAD::Poly(size_t(2),f,AD<double>(1.0*t));
+    //   if(abs(d2ydx2)<0.001){d2ydx2=AD<double>(0.001);}
+    //   AD<double> rc = CppAD::pow((1+dydx*dydx),(3.0/2.0))/abs(d2ydx2);
+    //   //std::cout<<"dydx: "<<dydx<<" d2ydx2: "<<d2ydx2<<" RC: "<<rc<<std::endl;
+    //   if(abs(rc)<0.001){rc=AD<double>(0.001);}
+    //   std::cout<<"Curvature cost "<< 100*CppAD::pow(1.0/rc, 2.0)<<std::endl;
+    //   //fg[0] += 10000*CppAD::pow(1.0/rc, 2.0);
+    // };
+
+    
+
 
     // Minimize the value gap between sequential actuations.
     for (int t = 0; t < N - 2; t++) {
-      fg[0] += 300*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += 50*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      fg[0] += 1*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
     //
@@ -262,12 +331,47 @@ MPC_Output::MPC_Output(){
 }
 
 void MPC_Output::fill(CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> sol){
-  for(int i = 0;    i<n;    i++){this->X.push_back(sol.x[i]);}
-  for(int i = n;    i<2*n;  i++){this->Y.push_back(sol.x[i]);}
-  for(int i = 2*n;  i<3*n;  i++){this->PSI.push_back(sol.x[i]);}
-  for(int i = 3*n;  i<4*n;  i++){this->V.push_back(sol.x[i]);}
-  for(int i = 4*n;  i<5*n;  i++){this->CTE.push_back(sol.x[i]);}
-  for(int i = 5*n;  i<(6*n);i++){this->EPSI.push_back(sol.x[i]);}
-  for(int i = (6*n);i<(7*n-1);i++){this->DELTA.push_back(sol.x[i]);}
-  for(int i = (7*n-1);i<(8*n-2);i++){this->A.push_back(sol.x[i]);}
+  bool verbose = false;
+
+  if(verbose){std::cout<<"X:"<<std::endl;}
+  for(int i = 0;    i<n;    i++){this->X.push_back(sol.x[i]);
+  if(verbose){std::cout<<sol.x[i]<<std::endl;}
+  };
+
+  if(verbose){std::cout<<"Y:"<<std::endl;}
+  for(int i = n;    i<2*n;  i++){this->Y.push_back(sol.x[i]);
+  if(verbose){std::cout<<sol.x[i]<<std::endl;}
+  };
+
+  if(verbose){std::cout<<"PSI:"<<std::endl;}
+  for(int i = 2*n;  i<3*n;  i++){this->PSI.push_back(sol.x[i]);
+  if(verbose){std::cout<<sol.x[i]<<std::endl;}
+  };
+
+  if(verbose){std::cout<<"V:"<<std::endl;}
+  for(int i = 3*n;  i<4*n;  i++){this->V.push_back(sol.x[i]);
+  if(verbose){std::cout<<sol.x[i]<<std::endl;}
+  };
+
+  if(verbose){std::cout<<"CTE:"<<std::endl;}
+  for(int i = 4*n;  i<5*n;  i++){this->CTE.push_back(sol.x[i]);
+  if(verbose){std::cout<<sol.x[i]<<std::endl;}
+  };
+  
+  if(verbose){std::cout<<"EPSI:"<<std::endl;}
+  for(int i = 5*n;  i<(6*n);i++){this->EPSI.push_back(sol.x[i]);
+  if(verbose){std::cout<<sol.x[i]<<std::endl;}
+  };
+  
+  if(verbose){std::cout<<"Delta:"<<std::endl;}
+  for(int i = (6*n);i<(7*n-1);i++){this->DELTA.push_back(sol.x[i]);
+  if(verbose){std::cout<<sol.x[i]<<std::endl;}
+  };
+
+  if(verbose){std::cout<<"A:"<<std::endl;}
+  for(int i = (7*n-1);i<(8*n-2);i++){this->A.push_back(sol.x[i]);
+  if(verbose){std::cout<<sol.x[i]<<std::endl;}
+  };
+
+  if(verbose){std::cout<<std::endl<<std::endl;}
 }

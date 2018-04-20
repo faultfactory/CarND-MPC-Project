@@ -6,7 +6,6 @@
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
-#include "Eigen-3.3/Eigen/Geometry"
 #include "MPC.h"
 #include "json.hpp"
 
@@ -132,8 +131,8 @@ int main() {
           
           MPC_Output out; 
           out.fill(mpc.Solve(state,coeffs));
-          double steer_value = -out.DELTA[2]/(deg2rad(25)*2.67);          
-          double throttle_value = out.A[2];
+          double steer_value = -out.DELTA[0]/(deg2rad(25)*2.67);          
+          double throttle_value = out.A[0];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
