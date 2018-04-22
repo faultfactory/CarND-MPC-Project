@@ -91,6 +91,8 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          double str_ang0 = j[1]["steering_angle"];
+          double thrtl0 = j[1]["throttle"];
 
           vector<double> vref_path_x(ptsx.size());
           vector<double> vref_path_y(ptsy.size());
@@ -117,7 +119,7 @@ int main() {
           Eigen::VectorXd x_pts = Eigen::VectorXd::Map(vref_path_x.data(),vref_path_x.size());
           Eigen::VectorXd y_pts = Eigen::VectorXd::Map(vref_path_y.data(),vref_path_y.size());
           // Get coefficients based on transformed track transmitted back from the simulator
-          Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,3);
+          Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,2);
           // calculate cte
           // since the transformed coordinates use the vehicle frame as the origin, px and py are
           // considered to be zero. 
@@ -160,8 +162,8 @@ int main() {
           vector<double> next_y_vals;
 
           for(int j=1;j<out.n;j++){
-            next_x_vals.push_back(j*1.0);
-            next_y_vals.push_back(polyeval(coeffs,j*1.0));
+            next_x_vals.push_back(j*3.0);
+            next_y_vals.push_back(polyeval(coeffs,j*3.0));
           }
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
@@ -181,7 +183,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(0));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {

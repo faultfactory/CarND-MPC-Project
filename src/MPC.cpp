@@ -7,7 +7,7 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-static size_t N = 10;
+static size_t N = 8;
 double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
@@ -24,7 +24,7 @@ const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
-double ref_v = 70;
+double ref_v = 60;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -42,7 +42,7 @@ class FG_eval {
  public:
   // Fitted polynomial coefficients
   Eigen::VectorXd coeffs;
-  FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
+  FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs;}
 
 
 
@@ -55,89 +55,49 @@ class FG_eval {
     
     // The part of the cost based on the reference state.
     
-    for (int t = 0; t < N; t++) {
-      fg[0] += 2*CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += 2* CppAD::pow(vars[epsi_start + t], 2);
-      fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
-      std::cout<<"Velocity"<< AD<double>(vars[v_start+t])<<std::endl;
+    for (int t = 0; t < int(N); t++) {
+      fg[0] += 25*CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 5*CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += CppAD::pow(vars[v_start + t]-ref_v, 2);
+      
     }
     
     // Minimize the use of actuators.
-    for (int t = 0; t < N - 1; t++) {
-      fg[0] += 1*CppAD::pow(vars[delta_start + t], 2);
-      fg[0] += 1*CppAD::pow(vars[a_start + t], 2);
-    }
-    
-    // Penalize paths with small curvature to trend the system toward the racing line
-    // and reduce aggressive values for delta, especially in the beginning of the path
-    // Radius of curvature: 
-    // https://www.intmath.com/applications-differentiation/8-radius-curvature.php
-    // Rc = ([1+(dy/dx)^2]^(3/2))/abs(d2y/dx^2)
-
-    // Using CppAd instructions from: 
-    // https://coin-or.github.io/CppAD/doc/get_started.cpp.htm
-
-    // I have to generate a polynomial of the model-predicted candidate path from which to
-    // compute curvature.
-    Eigen::VectorXd x_mpc;
-    Eigen::VectorXd y_mpc;
-
-    for (int t=0;t<N;t++){
-      x_mpc<<(vars[x_start+t]);
-      y_mpc(vars[y_start+t]);
-    };
-    
-    // assert(x_mpc.size() == y_mpc.size());
-    // assert(3 >= 1 && 3 <= x_mpc.size() - 1);
-    // Eigen::MatrixXd A(x_mpc.size(), 3 + 1);
-
-    // for (int i = 0; i < x_mpc.size(); i++) {
-    //   A(i, 0) = 1.0;
-    // }
-
-    // for (int j = 0; j < x_mpc.size(); j++) {
-    //   for (int i = 0; i < 3; i++) {
-    //     A(j, i + 1) = A(j, i) * x_mpc(j);
-    //   }
-    // }
-
-    // auto Q = A.householderQr();
-    // auto result = Q.solve(y_mpc);
-
-    // //CppAD::Poly wants to see coeffs as a simple vector
-    // ADvector f;
-    
-    // for(int i=0;i<coeffs.size();i++){
-    //   f.push_back(AD<double>(coeffs[i]));
-    // }
-    
-
-
-    // //std::cout<<"f: "<<f<<std::endl;
-    // for(int t = 0; t<N; t++){
-    //   // compute value of derivative at this location
-    //   AD<double> dydx = CppAD::Poly(size_t(1),f,AD<double>(1.0*t));
-    //   // compute the value of the 2nd derivative at this point 
-
-    //   AD<double> d2ydx2 = CppAD::Poly(size_t(2),f,AD<double>(1.0*t));
-    //   if(abs(d2ydx2)<0.001){d2ydx2=AD<double>(0.001);}
-    //   AD<double> rc = CppAD::pow((1+dydx*dydx),(3.0/2.0))/abs(d2ydx2);
-    //   //std::cout<<"dydx: "<<dydx<<" d2ydx2: "<<d2ydx2<<" RC: "<<rc<<std::endl;
-    //   if(abs(rc)<0.001){rc=AD<double>(0.001);}
-    //   std::cout<<"Curvature cost "<< 100*CppAD::pow(1.0/rc, 2.0)<<std::endl;
-    //   //fg[0] += 10000*CppAD::pow(1.0/rc, 2.0);
-    // };
-
-    
-
-
-    // Minimize the value gap between sequential actuations.
-    for (int t = 0; t < N - 2; t++) {
-      fg[0] += 1*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+    for (int t = 0; t < int(N) - 1; t++) {
+      fg[0] += 3*CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 1*CppAD::pow(vars[a_start + t], 2); 
     }
 
-    //
+        // Minimize the value gap between sequential actuations.
+    for (int t = 0; t < int(N) - 2; t++) {
+      fg[0] += 8*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 3*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+    }
+
+
+        
+    ////////////////////////////////////
+
+    for (int t = 0; t < int(N) - 1; t++) {
+      // Penalize wildly anomalous tracks by adding a light penalty to distance from the track polynomial, using the predicted X polynomial
+      // this should encourage alignment.
+      //fg[0] += 2*CppAD::pow(vars[y_start+t] -(coeffs[0] + coeffs[1] * vars[x_start+t] + coeffs[2] *CppAD::pow(vars[x_start+t],2) + coeffs[3]*CppAD::pow(vars[x_start+t],3)),2);
+      fg[0] += 1*CppAD::pow(vars[y_start+t+1] -(coeffs[0] + coeffs[1] * vars[x_start+t+1] + coeffs[2] *CppAD::pow(vars[x_start+t+1],2)),2);
+      // Attmpt to limit curvature by penalizing rapidly changing values of psi
+      //fg[0] +=2*CppAD::pow(vars[psi_start+t+1]-vars[psi_start+t],2);
+      //Reduce speed during large delta?fg[0] += 1*CppAD::pow(vars[psi_start + t+1 ] - vars[psi_start + t], 2);
+      //fg[0] += 1*CppAD::pow((vars[delta_start+t]*vars[v_start+t+1]),2);
+      // // Penalize longer paths y penalizing cumulative distance. May encourage racing line. 
+      // fg[0] += 1*CppAD::pow(vars[v_start+t]*dt,2);
+      
+    }
+    
+
+    // I don't want strange abrupt control points in the very beginning. 
+    //fg[0] += 10*CppAD::pow(vars[delta_start + 2] - vars[delta_start + 0], 2);
+
+    
+        //
     // Setup Constraints
     //
     // NOTE: In this section you'll setup the model constraints.
@@ -155,7 +115,7 @@ class FG_eval {
     fg[1 + epsi_start] = vars[epsi_start];
 
     // The rest of the constraints
-    for (int t = 1; t < N; t++) {
+    for (int t = 1; t < int(N); t++) {
       // The state at time t+1 .
       AD<double> x1 = vars[x_start + t];
       AD<double> y1 = vars[y_start + t];
@@ -176,8 +136,8 @@ class FG_eval {
       AD<double> delta0 = vars[delta_start + t - 1];
       AD<double> a0 = vars[a_start + t - 1];
 
-      AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] *pow(x0,2) + coeffs[3]*pow(x0,3);
-      AD<double> psides0 = CppAD::atan(coeffs[1]+2*coeffs[2]*x0+3*coeffs[3]*x0*x0);
+      AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] *pow(x0,2);
+      AD<double> psides0 = CppAD::atan(coeffs[1]+2*coeffs[2]*x0);
 
       // Here's `x` to get you started.
       // The idea here is to constraint this value to be 0.
@@ -228,7 +188,7 @@ CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> MPC::Solve(Eigen::VectorXd 
   // Initial value of the independent variables.
   // SHOULD BE 0 besides initial state.
   Dvector vars(n_vars);
-  for (int i = 0; i < n_vars; i++) {
+  for (int i = 0; i < int(n_vars); i++) {
     vars[i] = 0;
   }
 
@@ -238,31 +198,38 @@ CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> MPC::Solve(Eigen::VectorXd 
 
   // Set all non-actuators upper and lowerlimits
   // to the max negative and positive values.
-  for (int i = 0; i < delta_start; i++) {
+  for (int i = 0; i < int(delta_start); i++) {
     vars_lowerbound[i] = -1.0e19;
     vars_upperbound[i] = 1.0e19;
   }
 
+  // // I don't want paths that make crazy curls or strange changes
+  // for (int i = psi_start; i < v_start; i++) {
+  //   vars_lowerbound[i] = -5;
+  //   vars_upperbound[i] = 5;
+  // }
+    
   // The upper and lower limits of delta are set to -25 and 25
   // degrees (values in radians).
   // NOTE: Feel free to change this to something else.
-  for (int i = delta_start; i < a_start; i++) {
+  for (int i = delta_start; i < int(a_start); i++) {
     vars_lowerbound[i] = -0.436332;
     vars_upperbound[i] = 0.436332;
   }
 
   // Acceleration/decceleration upper and lower limits.
   // NOTE: Feel free to change this to something else.
-  for (int i = a_start; i < n_vars; i++) {
+  for (int i = a_start; i < int(n_vars); i++) {
     vars_lowerbound[i] = -1.0;
     vars_upperbound[i] = 1.0;
   }
+  
 
   // Lower and upper limits for the constraints
   // Should be 0 besides initial state.
   Dvector constraints_lowerbound(n_constraints);
   Dvector constraints_upperbound(n_constraints);
-  for (int i = 0; i < n_constraints; i++) {
+  for (int i = 0; i < int(n_constraints); i++) {
     constraints_lowerbound[i] = 0;
     constraints_upperbound[i] = 0;
   }
@@ -314,7 +281,7 @@ CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> MPC::Solve(Eigen::VectorXd 
   // Cost
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
-  for(int i = delta_start; i< a_start;i++){
+  for(int i = delta_start; i< int(a_start);i++){
   }
 
 
@@ -334,42 +301,42 @@ void MPC_Output::fill(CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> sol){
   bool verbose = false;
 
   if(verbose){std::cout<<"X:"<<std::endl;}
-  for(int i = 0;    i<n;    i++){this->X.push_back(sol.x[i]);
+  for(int i = 0;    i<int(n);    i++){this->X.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"Y:"<<std::endl;}
-  for(int i = n;    i<2*n;  i++){this->Y.push_back(sol.x[i]);
+  for(int i = n;    i<2*int(n);  i++){this->Y.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"PSI:"<<std::endl;}
-  for(int i = 2*n;  i<3*n;  i++){this->PSI.push_back(sol.x[i]);
+  for(int i = 2*n;  i<3*int(n);  i++){this->PSI.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"V:"<<std::endl;}
-  for(int i = 3*n;  i<4*n;  i++){this->V.push_back(sol.x[i]);
+  for(int i = 3*n;  i<4*int(n);  i++){this->V.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"CTE:"<<std::endl;}
-  for(int i = 4*n;  i<5*n;  i++){this->CTE.push_back(sol.x[i]);
+  for(int i = 4*n;  i<5*int(n);  i++){this->CTE.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
   
   if(verbose){std::cout<<"EPSI:"<<std::endl;}
-  for(int i = 5*n;  i<(6*n);i++){this->EPSI.push_back(sol.x[i]);
+  for(int i = 5*n;  i<(6*int(n));i++){this->EPSI.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
   
   if(verbose){std::cout<<"Delta:"<<std::endl;}
-  for(int i = (6*n);i<(7*n-1);i++){this->DELTA.push_back(sol.x[i]);
+  for(int i = (6*n);i<(7*int(n)-1);i++){this->DELTA.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"A:"<<std::endl;}
-  for(int i = (7*n-1);i<(8*n-2);i++){this->A.push_back(sol.x[i]);
+  for(int i = (7*n-1);i<(8*int(n)-2);i++){this->A.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
