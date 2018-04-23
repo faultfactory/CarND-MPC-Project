@@ -203,11 +203,6 @@ CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> MPC::Solve(Eigen::VectorXd 
     vars_upperbound[i] = 1.0e19;
   }
 
-  // // I don't want paths that make crazy curls or strange changes
-  // for (int i = psi_start; i < v_start; i++) {
-  //   vars_lowerbound[i] = -5;
-  //   vars_upperbound[i] = 5;
-  // }
     
   // The upper and lower limits of delta are set to -25 and 25
   // degrees (values in radians).
@@ -281,15 +276,7 @@ CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> MPC::Solve(Eigen::VectorXd 
   // Cost
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
-  for(int i = delta_start; i< int(a_start);i++){
-  }
-
-
-  // TODO: Return the first actuator values. The variables can be accessed with
-  // `solution.x[i]`.
-  //
-  // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
-  // creates a 2 element double vector.
+  // TODO: Return output
     return solution; 
 };
 

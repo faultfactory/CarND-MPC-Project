@@ -131,9 +131,23 @@ int main() {
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
           
-          MPC_Output out; 
+          // create output variable  
+          MPC_Output out;
+
+          // solve for existing state; 
           out.fill(mpc.Solve(state,coeffs));
-          double steer_value = -out.DELTA[0]/(deg2rad(25)*2.67);          
+
+          /* solve for state at 100 ms to compensate for latency
+          Since we've computed it already, we just need to reference 
+          the new values
+          */
+
+         state.setZero();
+         state<<out.X[1],out.Y[1],out.PSI[1],out.V[1],out.CTE[1],out.EPSI[1];
+         out.fill(mpc.Solve(state,coeffs));
+
+
+          double steer_value = -out.DELTA[0]/(deg2rad(25)*2.67);
           double throttle_value = out.A[0];
 
           json msgJson;
