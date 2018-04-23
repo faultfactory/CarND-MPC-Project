@@ -141,20 +141,31 @@ int main() {
           state1 << 0, 0, 0, v, cte, epsi;
 
           // create output variable  
-          MPC_Output out1;
-          out1.fill(mpc.Solve(state1,coeffs));
+          //MPC_Output out1;
+          //out1.fill(mpc.Solve(state1,coeffs));
 
-          /* solve for state at 100 ms to compensate for latency
+          /* solve for state at 'dt' seconds into the future to account for latency
           Since we've computed it already, we just need to reference 
           the new values
           */
           //Create values for intermediate state to compensate for delay;
-          double x0 = out1.X[0];
-          double y0 = out1.Y[0];
-          double v0 = out1.V[0];
-          double psi0 = out1.PSI[0];
-          double cte0 = out1.CTE[0];
-          double epsi0 = out1.EPSI[0];
+          // double x0 = out1.X[0];
+          // double y0 = out1.Y[0];
+          // double v0 = out1.V[0];
+          // double psi0 = out1.PSI[0];
+          // double cte0 = out1.CTE[0];
+          // double epsi0 = out1.EPSI[0];
+          // double delta0 = str_ang0; 
+          // double a0 = thrtl0; 
+          
+
+
+          double x0 = 0;
+          double y0 = 0;
+          double psi0 = 0;
+          double v0 = v;
+          double cte0 = cte;
+          double epsi0 = epsi;
           double delta0 = str_ang0; 
           double a0 = thrtl0; 
           
@@ -163,11 +174,12 @@ int main() {
           double y1 = (y0 + v0 *sin(psi0) * dt);
           double psi1 = psi0 + (v0 * delta0 / 2.67 * dt);
           double v1 = (v0 + a0 * dt);
-          double cte1 = ((polyeval(coeffs,x0) - y0) + (v0 * sin(epsi0) * dt));
+          double cte1 = (v0 * sin(epsi0) * dt);
           double epsi1 = ((psi0 - atan(coeffs[1]+2*coeffs[2]*x0)) + v0 * delta0 / 2.67 * dt);
 
+
           Eigen::VectorXd state(6);
-          state << x1, y1, psi1,v1,  cte1, epsi1;
+          state << x1, y1, psi1, v1,  cte1, epsi1;
           MPC_Output out;
           out.fill(mpc.Solve(state, coeffs));
 
