@@ -8,6 +8,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "MPC.h"
 #include "json.hpp"
+#include "tic_toc.h"
 
 
 // for convenience
@@ -72,6 +73,7 @@ int main() {
   // MPC is initialized here!
   MPC mpc;
 
+  tic();
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -98,7 +100,7 @@ int main() {
           // specify latency to see if solution is robust to a latency != computation dt 
           int latency = 100;
 
-          double dt = double(latency)/ 1000.0;
+          double dt = double(latency+25)/ 1000.0;
 
 
           vector<double> vref_path_x(ptsx.size());
@@ -225,6 +227,7 @@ int main() {
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
          
+         
           // Latency
           // The purpose is to mimic real driving conditions where
           // the car does actuate the commands instantly.
@@ -234,8 +237,11 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
+          
           this_thread::sleep_for(chrono::milliseconds(latency));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          toc();
+          tic();
         }
       } else {
         // Manual driving
