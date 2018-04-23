@@ -9,6 +9,7 @@
 #include "MPC.h"
 #include "json.hpp"
 
+
 // for convenience
 using json = nlohmann::json;
 
@@ -94,6 +95,12 @@ int main() {
           double str_ang0 = j[1]["steering_angle"];
           double thrtl0 = j[1]["throttle"];
 
+          // specify latency to see if solution is robust to a latency != computation dt 
+          int latency = 100;
+
+          double dt = double(latency)/ 1000.0;
+
+
           vector<double> vref_path_x(ptsx.size());
           vector<double> vref_path_y(ptsy.size());
 
@@ -109,6 +116,8 @@ int main() {
             vref_path_y[i]=(shift_x*sin(0-psi)+(shift_y)*cos(0-psi));
           }
           
+
+
           /*
           * TODO: Calculate steering angle and throttle using MPC.
           *
@@ -128,39 +137,38 @@ int main() {
           // psi is also assumed to be zero in our new coordinate frame. 
           // the arc tangent of derivative of the polynomial evaluated at psi provides 
           double epsi = -atan(coeffs[1]);
-          Eigen::VectorXd state(6);
-          state << 0, 0, 0, v, cte, epsi;
+          Eigen::VectorXd state1(6);
+          state1 << 0, 0, 0, v, cte, epsi;
 
           // create output variable  
-          MPC_Output out;
-
-          // solve for existing state; 
-          out.fill(mpc.Solve(state,coeffs));
+          MPC_Output out1;
+          out1.fill(mpc.Solve(state1,coeffs));
 
           /* solve for state at 100 ms to compensate for latency
           Since we've computed it already, we just need to reference 
           the new values
           */
           //Create values for intermediate state to compensate for delay;
-          double x0 = out.X[0];
-          double y0 = out.Y[0];
-          double v0 = out.V[0];
-          double psi0 = out.PSI[0];
-          double cte0 = out.CTE[0];
-          double epsi0 = out.EPSI[0];
+          double x0 = out1.X[0];
+          double y0 = out1.Y[0];
+          double v0 = out1.V[0];
+          double psi0 = out1.PSI[0];
+          double cte0 = out1.CTE[0];
+          double epsi0 = out1.EPSI[0];
           double delta0 = str_ang0; 
           double a0 = thrtl0; 
-          double dt = 0.1;
+          
                 
-          double x1 = x0 + v0 * psi0 * dt;
-          double y1 = (y0 + v0 *psi0 * dt);
+          double x1 = x0 + v0 * cos(psi0) * dt;
+          double y1 = (y0 + v0 *sin(psi0) * dt);
           double psi1 = psi0 + (v0 * delta0 / 2.67 * dt);
           double v1 = (v0 + a0 * dt);
-          double cte1 = ((polyeval(coeffs,x0) - y0) + (v0 * epsi0 * dt));
+          double cte1 = ((polyeval(coeffs,x0) - y0) + (v0 * sin(epsi0) * dt));
           double epsi1 = ((psi0 - atan(coeffs[1]+2*coeffs[2]*x0)) + v0 * delta0 / 2.67 * dt);
 
-          state.setZero();
-          state << x1, y1, v1, psi1, cte1, epsi1;
+          Eigen::VectorXd state(6);
+          state << x1, y1, psi1,v1,  cte1, epsi1;
+          MPC_Output out;
           out.fill(mpc.Solve(state, coeffs));
 
 
@@ -214,7 +222,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(latency));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
