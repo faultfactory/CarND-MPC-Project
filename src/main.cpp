@@ -130,7 +130,7 @@ int main() {
           double epsi = -atan(coeffs[1]);
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
-          
+
           // create output variable  
           MPC_Output out;
 
@@ -141,10 +141,27 @@ int main() {
           Since we've computed it already, we just need to reference 
           the new values
           */
+          //Create values for intermediate state to compensate for delay;
+          double x0 = out.X[0];
+          double y0 = out.Y[0];
+          double v0 = out.V[0];
+          double psi0 = out.PSI[0];
+          double cte0 = out.CTE[0];
+          double epsi0 = out.EPSI[0];
+          double delta0 = str_ang0; 
+          double a0 = thrtl0; 
+          double dt = 0.1;
+                
+          double x1 = x0 + v0 * psi0 * dt;
+          double y1 = (y0 + v0 *psi0 * dt);
+          double psi1 = psi0 + (v0 * delta0 / 2.67 * dt);
+          double v1 = (v0 + a0 * dt);
+          double cte1 = ((polyeval(coeffs,x0) - y0) + (v0 * epsi0 * dt));
+          double epsi1 = ((psi0 - atan(coeffs[1]+2*coeffs[2]*x0)) + v0 * delta0 / 2.67 * dt);
 
-         state.setZero();
-         state<<out.X[1],out.Y[1],out.PSI[1],out.V[1],out.CTE[1],out.EPSI[1];
-         out.fill(mpc.Solve(state,coeffs));
+          state.setZero();
+          state << x1, y1, v1, psi1, cte1, epsi1;
+          out.fill(mpc.Solve(state, coeffs));
 
 
           double steer_value = -out.DELTA[0]/(deg2rad(25)*2.67);
@@ -197,7 +214,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(0));
+          this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
