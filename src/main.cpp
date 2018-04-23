@@ -99,8 +99,10 @@ int main() {
 
           // specify latency to see if solution is robust to a latency != computation dt 
           int latency = 100;
-
-          double dt = double(latency+25)/ 1000.0;
+          
+          // create a latency value for forward computation that accounts for 
+          // the full system latency. 
+          double dt_lag = double(latency+25)/ 1000.0;
 
 
           vector<double> vref_path_x(ptsx.size());
@@ -139,29 +141,16 @@ int main() {
           // psi is also assumed to be zero in our new coordinate frame. 
           // the arc tangent of derivative of the polynomial evaluated at psi provides 
           double epsi = -atan(coeffs[1]);
-          Eigen::VectorXd state1(6);
-          state1 << 0, 0, 0, v, cte, epsi;
+          // Eigen::VectorXd state1(6);
+          // state1 << 0, 0, 0, v, cte, epsi;
 
           // create output variable  
           //MPC_Output out1;
           //out1.fill(mpc.Solve(state1,coeffs));
 
           /* solve for state at 'dt' seconds into the future to account for latency
-          Since we've computed it already, we just need to reference 
-          the new values
           */
           //Create values for intermediate state to compensate for delay;
-          // double x0 = out1.X[0];
-          // double y0 = out1.Y[0];
-          // double v0 = out1.V[0];
-          // double psi0 = out1.PSI[0];
-          // double cte0 = out1.CTE[0];
-          // double epsi0 = out1.EPSI[0];
-          // double delta0 = str_ang0; 
-          // double a0 = thrtl0; 
-          
-
-
           double x0 = 0;
           double y0 = 0;
           double psi0 = 0;
@@ -172,12 +161,12 @@ int main() {
           double a0 = thrtl0; 
           
                 
-          double x1 = x0 + v0 * cos(psi0) * dt;
-          double y1 = (y0 + v0 *sin(psi0) * dt);
-          double psi1 = psi0 + (v0 * delta0 / 2.67 * dt);
-          double v1 = (v0 + a0 * dt);
-          double cte1 = (v0 * sin(epsi0) * dt);
-          double epsi1 = ((psi0 - atan(coeffs[1]+2*coeffs[2]*x0)) + v0 * delta0 / 2.67 * dt);
+          double x1 = x0 + v0 * cos(psi0) * dt_lag;
+          double y1 = (y0 + v0 *sin(psi0) * dt_lag);
+          double psi1 = psi0 + (v0 * delta0 / 2.67 * dt_lag);
+          double v1 = (v0 + a0 * dt_lag);
+          double cte1 = (v0 * sin(epsi0) * dt_lag);
+          double epsi1 = ((psi0 - atan(coeffs[1]+2*coeffs[2]*x0)) + v0 * delta0 / 2.67 * dt_lag);
 
 
           Eigen::VectorXd state(6);
@@ -202,7 +191,7 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
 
-          for(int j=1;j<out.n;j++){
+          for(int j=0;j<out.n;j++){
             mpc_x_vals.push_back(out.X[j]);
             mpc_y_vals.push_back(out.Y[j]);
           }
@@ -214,7 +203,7 @@ int main() {
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
-          for(int j=1;j<out.n;j++){
+          for(int j=0;j<out.n;j++){
             next_x_vals.push_back(j*3.0);
             next_y_vals.push_back(polyeval(coeffs,j*3.0));
           }
