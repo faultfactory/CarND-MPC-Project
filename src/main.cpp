@@ -132,7 +132,7 @@ int main() {
           Eigen::VectorXd x_pts = Eigen::VectorXd::Map(vref_path_x.data(),vref_path_x.size());
           Eigen::VectorXd y_pts = Eigen::VectorXd::Map(vref_path_y.data(),vref_path_y.size());
           // Get coefficients based on transformed track transmitted back from the simulator
-          Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,2);
+          Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,3);
           // calculate cte
           // since the transformed coordinates use the vehicle frame as the origin, px and py are
           // considered to be zero. 
@@ -166,7 +166,7 @@ int main() {
           double psi1 = psi0 + (v0 * delta0 / 2.67 * dt_lag);
           double v1 = (v0 + a0 * dt_lag);
           double cte1 = (v0 * sin(epsi0) * dt_lag);
-          double epsi1 = ((psi0 - atan(coeffs[1]+2*coeffs[2]*x0)) + v0 * delta0 / 2.67 * dt_lag);
+          double epsi1 = ((psi0 - atan(coeffs[1]+2*coeffs[2]*x0)+3*coeffs[3]*x0*x0) + v0 * delta0 / 2.67 * dt_lag);
 
 
           Eigen::VectorXd state(6);
