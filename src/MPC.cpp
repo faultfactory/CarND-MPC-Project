@@ -24,7 +24,7 @@ const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
-double ref_v = 40;
+double ref_v = 45;
 
 
 
@@ -58,21 +58,21 @@ class FG_eval {
     // The part of the cost based on the reference state.
     
     for (int t = 0; t < int(N); t++) {
-      fg[0] += 25*CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += 25*CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += 10*CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 10*CppAD::pow(vars[epsi_start + t], 2);
       fg[0] += 0.1*CppAD::pow(vars[v_start + t]-ref_v, 2);
       
     }
     
     // Minimize the use of actuators.
     for (int t = 0; t < int(N) - 1; t++) {
-      fg[0] += 10*CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 1000*CppAD::pow(vars[delta_start + t], 2);
       fg[0] += 0.1*CppAD::pow(vars[a_start + t], 2); 
     }
 
         // Minimize the value gap between sequential actuations.
     for (int t = 0; t < int(N) - 2; t++) {
-      fg[0] += 100*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 30000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
       fg[0] += 1*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
@@ -81,18 +81,10 @@ class FG_eval {
     ////////////////////////////////////
 
     for (int t = 0; t < int(N) - 1; t++) {
-      // Penalize wildly anomalous tracks by adding a light penalty to distance from the track polynomial, using the predicted X polynomial
-      // this should encourage alignment.
-      //fg[0] += 2*CppAD::pow(vars[y_start+t] -(coeffs[0] + coeffs[1] * vars[x_start+t] + coeffs[2] *CppAD::pow(vars[x_start+t],2) + coeffs[3]*CppAD::pow(vars[x_start+t],3)),2);
-      //fg[0] += 2*CppAD::pow(vars[y_start+t+1] -(coeffs[0] + coeffs[1] * vars[x_start+t+1] + coeffs[2] *CppAD::pow(vars[x_start+t+1],2)),2);
-      // Attmpt to limit curvature by penalizing rapidly changing values of psi
-      //fg[0] +=8*CppAD::pow(vars[psi_start+t+1]-vars[psi_start+t],2);
-      //Reduce speed during large delta?
-     // fg[0] += 10*CppAD::pow((vars[delta_start+t]*vars[v_start+t+1]),2);
-      //fg[0] += 1*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);
-      // // Penalize longer paths y penalizing cumulative distance. May encourage racing line. 
-      // fg[0] += 1*CppAD::pow(vars[v_start+t]*dt,2);
-      
+     // the model we're using doesn't adequately comprehend high speed corners, so slow down ahead of time
+     // The errors induce an oscillation that takes time to damp out so by 
+     // reducing speed, the scope of that error can be reduced. 
+      fg[0] += 10*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
     }
     
     
