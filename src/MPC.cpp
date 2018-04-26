@@ -24,7 +24,7 @@ const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
-double ref_v = 45;
+double ref_v = 47;
 
 
 
@@ -72,8 +72,8 @@ class FG_eval {
 
         // Minimize the value gap between sequential actuations.
     for (int t = 0; t < int(N) - 2; t++) {
-      fg[0] += 30000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += 1*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      fg[0] += 40000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 0.5*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
 
@@ -85,7 +85,8 @@ class FG_eval {
      // The errors induce an oscillation that takes time to damp out so by 
      // reducing speed, the scope of that error can be reduced. 
       fg[0] += 10*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
-    }
+    };
+    fg[0] +=1000*(CppAD::pow(vars[x_start+N]-vars[x_start],2)+CppAD::pow(vars[y_start+N]-vars[y_start],2));
     
     
 
