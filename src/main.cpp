@@ -94,15 +94,20 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          // Conversion from mph to m/s
+          v*=0.44704;           
           double str_ang0 = j[1]["steering_angle"];
           double thrtl0 = j[1]["throttle"];
+
 
           // specify latency to see if solution is robust to a latency != computation dt 
           int latency = 100;
           
           // create a latency value for forward computation that accounts for 
           // the full system latency. 
-          double dt_lag = double(latency+25)/ 1000.0;
+          double dt_lag = double(latency)/ 1000.0;
+
+          
 
 
           vector<double> vref_path_x(ptsx.size());
@@ -132,11 +137,11 @@ int main() {
           Eigen::VectorXd x_pts = Eigen::VectorXd::Map(vref_path_x.data(),vref_path_x.size());
           Eigen::VectorXd y_pts = Eigen::VectorXd::Map(vref_path_y.data(),vref_path_y.size());
           // Get coefficients based on transformed track transmitted back from the simulator
-          Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,2);
+          Eigen::VectorXd coeffs = polyfit(x_pts,y_pts,3);
           // calculate cte
           // since the transformed coordinates use the vehicle frame as the origin, px and py are
           // considered to be zero. 
-          double cte = polyeval(coeffs, 0);
+          double cte = coeffs[0];
           // calcualte orientation error
           // psi is also assumed to be zero in our new coordinate frame. 
           // the arc tangent of derivative of the polynomial evaluated at psi provides 
@@ -157,16 +162,40 @@ int main() {
           double v0 = v;
           double cte0 = cte;
           double epsi0 = epsi;
-          double delta0 = str_ang0; 
-          double a0 = thrtl0; 
-          
-                
-          double x1 = x0 + v0 * cos(psi0) * dt_lag;
-          double y1 = (y0 + v0 *sin(psi0) * dt_lag);
-          double psi1 = psi0 + (v0 * delta0 / 2.67 * dt_lag);
-          double v1 = (v0 + a0 * dt_lag);
-          double cte1 = (v0 * sin(epsi0) * dt_lag);
-          double epsi1 = ((psi0 - atan(coeffs[1]+2*coeffs[2]*x0)) + v0 * delta0 / 2.67 * dt_lag);
+          // multiply by negative 1 to deal with simulator sign filp
+          double delta0 =  -1*str_ang0;
+          // Once the conversion from mph to m/s is made, the system becomes widly unstable
+          // with parameters that make sense based on units.
+          // That doesn't make logical sense so I tried to determine the physics behind this
+          // By digging into the sim repo, you can find that the car mass is specified to be 1000 kg
+          // Maximum torque is specified to be 2500 Nm and there is a drag term of 0.1
+          // Wheel radius is 0.37
+          // Drag is not a direct calculation based on physics, but rather a de-rating of 
+          // the resulting velocity.
+          //https://forum.unity.com/threads/drag-factor-what-is-it.85504/
+          double a0 = thrtl0*(2500/0.37)/1000;
+          double drag = 0.1; // based on simulation repo
+
+          // Base Equation:  x1 = x0 + v0 * cos(psi0) * dt_lag;
+          // x0 = 0, psi0 = 0 -> cos(0)=1; 
+          double x1 = v0 * dt_lag; 
+          // Base Equation: y1 = y0 + v0 * sin(psi0)* dt_lag; 
+          // y0=0, sin(0)=0; 
+          double y1 = 0;
+          // Base Equation: psi1 = psi0 + (v0 * delta0 / 2.67 * dt_lag);
+          // psi0 = 0
+          double psi1 = (v0 * delta0 * dt_lag / 2.67 );
+
+          // Base Equation: v1 = (v0 + a0 * dt)
+          // Adding drag term to v1 calculation
+          double v1 = (v0 + a0 * dt_lag) * (1 - drag*dt_lag);
+
+          double cte1 = cte0 + (v0 * sin(epsi0) * dt_lag);
+
+          // Base Equation:
+          // epsi1 = (psi0 - atan(coeffs[1]+2*coeffs[2]*x0)) + v0 * delta0 / 2.67 * dt_lag);
+          // psi0 = 0, x0 = 0, The second half of the calculation is psi1; 
+          double epsi1 = -atan(coeffs[1]) + psi1;
 
 
           Eigen::VectorXd state(6);
@@ -175,8 +204,8 @@ int main() {
           out.fill(mpc.Solve(state, coeffs));
 
 
-          double steer_value = -out.DELTA[0]/(deg2rad(25)*2.67);
-          double throttle_value = out.A[0];
+          double steer_value = -out.DELTA[0]/(deg2rad(25));
+          double throttle_value = out.A[0]*1000/(2500/0.37);
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -230,6 +259,10 @@ int main() {
           this_thread::sleep_for(chrono::milliseconds(latency));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
           toc();
+          
+          std::cout<<"vel m/s: :"<<v<<std::endl;
+          std::cout<<"throttle_Value:"<<throttle_value<<std::endl;
+
           tic();
         }
       } else {

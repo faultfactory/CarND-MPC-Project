@@ -7,8 +7,8 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-static size_t N = 8;
-double dt = 0.1;
+static size_t N = 10;
+double dt = 0.12  ;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -24,7 +24,8 @@ const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
-double ref_v = 60;
+double ref_v = 40;
+
 
 
 // The solver takes all the state variables and actuator
@@ -57,22 +58,22 @@ class FG_eval {
     // The part of the cost based on the reference state.
     
     for (int t = 0; t < int(N); t++) {
-      fg[0] += 20*CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += 10*CppAD::pow(vars[epsi_start + t], 2);
-      fg[0] += CppAD::pow(vars[v_start + t]-ref_v, 2);
+      fg[0] += 25*CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 25*CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += 0.1*CppAD::pow(vars[v_start + t]-ref_v, 2);
       
     }
     
     // Minimize the use of actuators.
     for (int t = 0; t < int(N) - 1; t++) {
       fg[0] += 10*CppAD::pow(vars[delta_start + t], 2);
-      fg[0] += 1*CppAD::pow(vars[a_start + t], 2); 
+      fg[0] += 0.1*CppAD::pow(vars[a_start + t], 2); 
     }
 
         // Minimize the value gap between sequential actuations.
     for (int t = 0; t < int(N) - 2; t++) {
-      fg[0] += 8*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += 3*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      fg[0] += 100*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 1*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
 
@@ -85,17 +86,16 @@ class FG_eval {
       //fg[0] += 2*CppAD::pow(vars[y_start+t] -(coeffs[0] + coeffs[1] * vars[x_start+t] + coeffs[2] *CppAD::pow(vars[x_start+t],2) + coeffs[3]*CppAD::pow(vars[x_start+t],3)),2);
       //fg[0] += 2*CppAD::pow(vars[y_start+t+1] -(coeffs[0] + coeffs[1] * vars[x_start+t+1] + coeffs[2] *CppAD::pow(vars[x_start+t+1],2)),2);
       // Attmpt to limit curvature by penalizing rapidly changing values of psi
-     // fg[0] +=8*CppAD::pow(vars[psi_start+t+1]-vars[psi_start+t],2);
-      //Reduce speed during large delta?fg[0] += 1*CppAD::pow(vars[psi_start + t+1 ] - vars[psi_start + t], 2);
-      fg[0] += 10*CppAD::pow((vars[delta_start+t]*vars[v_start+t+1]),2);
+      //fg[0] +=8*CppAD::pow(vars[psi_start+t+1]-vars[psi_start+t],2);
+      //Reduce speed during large delta?
+     // fg[0] += 10*CppAD::pow((vars[delta_start+t]*vars[v_start+t+1]),2);
+      //fg[0] += 1*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);
       // // Penalize longer paths y penalizing cumulative distance. May encourage racing line. 
       // fg[0] += 1*CppAD::pow(vars[v_start+t]*dt,2);
       
     }
     
-
-    // I don't want strange abrupt control points in the very beginning. 
-    //fg[0] += 10*CppAD::pow(vars[delta_start + 2] - vars[delta_start + 0], 2);
+    
 
     
         //
@@ -137,8 +137,8 @@ class FG_eval {
       AD<double> delta0 = vars[delta_start + t - 1];
       AD<double> a0 = vars[a_start + t - 1];
 
-      AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] *pow(x0,2);
-      AD<double> psides0 = CppAD::atan(coeffs[1]+2*coeffs[2]*x0);
+      AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] *pow(x0,2)+coeffs[3] *pow(x0,3);
+      AD<double> psides0 = CppAD::atan(coeffs[1]+2*coeffs[2]*x0 + 3*coeffs[3] *x0*x0);
 
       // Here's `x` to get you started.
       // The idea here is to constraint this value to be 0.
@@ -152,12 +152,10 @@ class FG_eval {
       // epsi[t+1] = psi[t] - psides[t] + v[t] * delta[t] / Lf * dt
       fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
       fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-      fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 / Lf * dt);
+      fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 * dt/ Lf );
       fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
-      fg[1 + cte_start + t] =
-          cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
-      fg[1 + epsi_start + t] =
-          epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
+      fg[1 + cte_start + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
+      fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * delta0 * dt / Lf );
     }
   }
 };
@@ -216,8 +214,8 @@ CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> MPC::Solve(Eigen::VectorXd 
   // Acceleration/decceleration upper and lower limits.
   // NOTE: Feel free to change this to something else.
   for (int i = a_start; i < int(n_vars); i++) {
-    vars_lowerbound[i] = -1.0;
-    vars_upperbound[i] = 1.0;
+    vars_lowerbound[i] = -7.0;
+    vars_upperbound[i] = 7.0;
   }
   
 
@@ -289,42 +287,42 @@ void MPC_Output::fill(CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> sol){
   bool verbose = false;
 
   if(verbose){std::cout<<"X:"<<std::endl;}
-  for(int i = 0;    i<int(n);    i++){this->X.push_back(sol.x[i]);
+  for(size_t i = x_start;    i<y_start;    i++){this->X.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"Y:"<<std::endl;}
-  for(int i = n;    i<2*int(n);  i++){this->Y.push_back(sol.x[i]);
+  for(size_t i = y_start;    i<psi_start;  i++){this->Y.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"PSI:"<<std::endl;}
-  for(int i = 2*n;  i<3*int(n);  i++){this->PSI.push_back(sol.x[i]);
+  for(size_t i = psi_start;    i<v_start;  i++){this->PSI.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"V:"<<std::endl;}
-  for(int i = 3*n;  i<4*int(n);  i++){this->V.push_back(sol.x[i]);
+  for(size_t i = v_start;    i<cte_start;  i++){this->V.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"CTE:"<<std::endl;}
-  for(int i = 4*n;  i<5*int(n);  i++){this->CTE.push_back(sol.x[i]);
+  for(size_t i = cte_start;    i<epsi_start;  i++){this->CTE.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
   
   if(verbose){std::cout<<"EPSI:"<<std::endl;}
-  for(int i = 5*n;  i<(6*int(n));i++){this->EPSI.push_back(sol.x[i]);
+  for(size_t i = epsi_start;    i<delta_start; i++){this->EPSI.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
   
   if(verbose){std::cout<<"Delta:"<<std::endl;}
-  for(int i = (6*n);i<(7*int(n)-1);i++){this->DELTA.push_back(sol.x[i]);
+  for(size_t i = delta_start;    i<a_start; i++){this->DELTA.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
   if(verbose){std::cout<<"A:"<<std::endl;}
-  for(int i = (7*n-1);i<(8*int(n)-2);i++){this->A.push_back(sol.x[i]);
+  for(size_t i = a_start;  i<(a_start+n-1);i++){this->A.push_back(sol.x[i]);
   if(verbose){std::cout<<sol.x[i]<<std::endl;}
   };
 
