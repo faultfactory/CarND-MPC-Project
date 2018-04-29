@@ -68,13 +68,13 @@ class FG_eval {
     
     // Minimize the use of actuators.
     for (int t = 0; t < int(N) - 1; t++) {
-      fg[0] += 1000*CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 900*CppAD::pow(vars[delta_start + t], 2);
       fg[0] += 0.1*CppAD::pow(vars[a_start + t], 2); 
     }
 
         // Minimize the value gap between sequential actuations.
     for (int t = 0; t < int(N) - 2; t++) {
-      fg[0] += 35000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 30000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
       fg[0] += 0.1*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
@@ -87,7 +87,7 @@ class FG_eval {
      // The errors induce an oscillation that takes time to damp out so by 
      // reducing speed, the scope of that error can be reduced.
      // I only target
-      fg[0] += 19*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
+      fg[0] += 15*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
     };
     fg[0] +=20000*(CppAD::pow(vars[x_start+N]-vars[x_start],2)+CppAD::pow(vars[y_start+N]-vars[y_start],2));
     
