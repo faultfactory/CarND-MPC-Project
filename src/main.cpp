@@ -96,16 +96,12 @@ int main() {
           double str_ang0 = j[1]["steering_angle"];
           double thrtl0 = j[1]["throttle"];
 
-
           // specify latency to see if solution is robust to a latency != computation dt 
           int latency = 100;
           
           // create a latency value for forward computation that accounts for 
           // the full system latency. 
           double dt_lag = double(latency)/ 1000.0;
-
-          
-
 
           vector<double> vref_path_x(ptsx.size());
           vector<double> vref_path_y(ptsy.size());
@@ -121,9 +117,7 @@ int main() {
             vref_path_x[i]=(shift_x*cos(0-psi)-(shift_y)*sin(0-psi));
             vref_path_y[i]=(shift_x*sin(0-psi)+(shift_y)*cos(0-psi));
           }
-          
-
-
+      
           /*
           * TODO: Calculate steering angle and throttle using MPC.
           *

@@ -1,4 +1,64 @@
 # CarND-Controls-MPC
+
+As pre the review rubric, this document describes the solution to this project. 
+
+### Model: 
+
+The model for the MPC controller uses the kinematic model equations shown below to define the state. 
+
+Since the Unity physics engine behind the simulator is likely to be idealized, I assumed that the effort of exploring a dynamic model to incorporate tire physics, aero, etc was not worth it.  Also, models of similar complexity are in production ADAS solutions. 
+
+![](model_Eq.png)
+
+### Polynomial Fitting:
+
+To fit to the track way points, a coordinate transformation is done based on the vehicle position returned from the simulator.
+
+```c++
+// Performs Coordinate Transformation to place the 6 waypoint values into vehicle coordinate frame. 
+for(int i = 0; i < ptsx.size();i++){
+	double shift_x=ptsx[i]-px;
+    double shift_y=ptsy[i]-py;
+	vref_path_x[i]=(shift_x*cos(0-psi)-(shift_y)*sin(0-psi));
+	vref_path_y[i]=(shift_x*sin(0-psi)+(shift_y)*cos(0-psi));
+	}
+```
+
+Doing this coordinate transformation resets the position of the vehicle to (0,0) and the heading angle psi to 0. In this new coordinate frame, the waypoints are fit to a 3rd order polynomia using polyfit. 
+
+### Actuator Accomodation and Pre-Processing:
+
+The acceleration term was given special accomodations due to the fact that the simulator accepts a -1 to 1 throttle value and it does not adequately represent the response the vehicle. By measuring the response of the vehicle to full throttle over the course of a second a rough estimate of full throttle acceleration was calculated to be between 6 and 5 m/s^2 at low speeds.  This was done by displaying the speed and time at each update.
+
+Inside the repository for the Unity simulator there is a vehicle with a full torque output of 2500Nm and a mass of 1000kg. When accounting for wheel radius (0.37m), the proper conversion from throttle to acceleration is defined. 
+
+```c++
+double a0 = thrtl0*(2500/0.37)/1000;
+```
+
+The inverse of this is used to calculate the throttle value sent to the simulator from the acceleration value returned by the model. 
+
+```c++
+double throttle_value = out.A[0]*1000/(2500/0.37);
+```
+
+This extra step was deemed to be necessary after converting the speed units returned from mph to m/s.  Position is reported back from the simulator are in meters so this was done to make the model units align.  The vehicle parameters that matched the measured acceleration also had a drag factor of 0.1 Per an explanation on the Unity forums (https://forum.unity.com/threads/drag-factor-what-is-it.85504/), accounting for drag leads to the following calculation for v(t+1)
+
+```c++
+// Base Equation: v1 = (v0 + a0 * dt)
+// Adding drag term to v1 calculation
+double v1 = (v0 + a0 * dt_lag) * (1 - drag*dt_lag);
+```
+
+
+
+### 
+
+
+## Original Udacity Content Below
+
+
+
 Self-Driving Car Engineer Nanodegree Program
 
 ---
@@ -41,11 +101,11 @@ Self-Driving Car Engineer Nanodegree Program
 ## Tips
 
 1. It's recommended to test the MPC on basic examples to see if your implementation behaves as desired. One possible example
-is the vehicle starting offset of a straight line (reference). If the MPC implementation is correct, after some number of timesteps
-(not too many) it should find and track the reference line.
+  is the vehicle starting offset of a straight line (reference). If the MPC implementation is correct, after some number of timesteps
+  (not too many) it should find and track the reference line.
 2. The `lake_track_waypoints.csv` file has the waypoints of the lake track. You could use this to fit polynomials and points and see of how well your model tracks curve. NOTE: This file might be not completely in sync with the simulator so your solution should NOT depend on it.
 3. For visualization this C++ [matplotlib wrapper](https://github.com/lava/matplotlib-cpp) could be helpful.)
-4.  Tips for setting up your environment are available [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
+4. Tips for setting up your environment are available [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
 5. **VM Latency:** Some students have reported differences in behavior using VM's ostensibly a result of latency.  Please let us know if issues arise as a result of a VM environment.
 
 ## Editor Settings
