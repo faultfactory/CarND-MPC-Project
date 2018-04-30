@@ -8,8 +8,6 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "MPC.h"
 #include "json.hpp"
-#include "tic_toc.h"
-
 
 // for convenience
 using json = nlohmann::json;
@@ -73,7 +71,6 @@ int main() {
   // MPC is initialized here!
   MPC mpc;
 
-  tic();
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -258,12 +255,11 @@ int main() {
           
           this_thread::sleep_for(chrono::milliseconds(latency));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-          toc();
+          
           
           std::cout<<"vel m/s: :"<<v<<std::endl;
           std::cout<<"throttle_Value:"<<throttle_value<<std::endl;
 
-          tic();
         }
       } else {
         // Manual driving

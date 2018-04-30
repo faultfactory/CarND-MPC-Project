@@ -89,6 +89,9 @@ class FG_eval {
      // I only target
       fg[0] += 17*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
     };
+
+    //Adding Euclidean distance here try and promote taking inside lines. Effect is subtle but the delays 
+    // transition from the inside line to main path in long sweeping curve
     fg[0] +=20000*(CppAD::pow(vars[x_start+N]-vars[x_start],2)+CppAD::pow(vars[y_start+N]-vars[y_start],2));
     
     
