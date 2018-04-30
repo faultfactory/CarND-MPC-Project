@@ -1,18 +1,43 @@
 # CarND-Controls-MPC
 
-As pre the review rubric, this document describes the solution to this project. 
+As pre the review rubric, this document describes the solution to this project.  I submitted this project very late, frankly, because I was having too much fun. 
 
 ### Model: 
 
-The model for the MPC controller uses the kinematic model equations shown below to define the state. 
+Since the Unity physics engine behind the simulator is likely to be idealized, I assumed that the effort of exploring a dynamic model to incorporate tire physics, aero, etc was not worth it.  Also, models of similar complexity are in production ADAS solutions on vehicles today. 
 
-Since the Unity physics engine behind the simulator is likely to be idealized, I assumed that the effort of exploring a dynamic model to incorporate tire physics, aero, etc was not worth it.  Also, models of similar complexity are in production ADAS solutions. 
+The model for the MPC controller uses the kinematic model equations shown below to define the state. 
 
 ![](model_Eq.png)
 
+Cross track error and orientation error are calculated using the equations below.
+
+![	](cte_.png)
+
+![](psi_er_.png)
+
+Those 6 terms define the state used in the model. 
+x,y	:  	current vehicle position incartesian coordinates, meters
+psi	: 	orientation angle of vehicle in coordinate frame, radians
+v	: 	longitudinal velocity, meters per second
+cte	: 	cross-track error, meters
+epsi	: 	orientation error, radians
+
+Actuator terms, delta and a, represent the steering angle and acceleration values for the model. 
+delta: 	steering angle, radians
+a	: 	acceleration, meters per second^2
+
+The term Lf defines the characteristic length of the vehicle used to compute the change in orientation from steering angle. 
+
+### Prediction Count and Timestep Duration:
+
+During early iterations of the project, predictions were run to 0.8 seconds with 0.1 second time steps. (N=8). I chose this low number because early iterations of the model had strange fits that did not correctly fit the functions. With a lower number of points to fit, there was more consistent performance. As I fixed various implementation errors and tuned the cost gains for the optimizer, I found that I was not able to project far enough into the future to accomodate curves at the end of the high speed straights. 
+
+Increasing N to 11 allowed for a slightly longer projection into the future. I also decided to increase the dt value to reflect what the timing between iterations was. When checking the velocity to calculate acceleration values for actuator characterization, step times (including the latency) were seen at roughly 115-135ms.  Adjusting dt to 0.12s allowed for a closer alignment with these values.  With these new values there was a more controlled entry and exit to corners when approaching at high speed.
+
 ### Polynomial Fitting:
 
-To fit to the track way points, a coordinate transformation is done based on the vehicle position returned from the simulator.
+To fit to the track waypoints, a coordinate transformation is done based on the vehicle position returned from the simulator.
 
 ```c++
 // Performs Coordinate Transformation to place the 6 waypoint values into vehicle coordinate frame. 
@@ -24,11 +49,35 @@ for(int i = 0; i < ptsx.size();i++){
 	}
 ```
 
-Doing this coordinate transformation resets the position of the vehicle to (0,0) and the heading angle psi to 0. In this new coordinate frame, the waypoints are fit to a 3rd order polynomia using polyfit. 
+Doing this coordinate transformation resets the position of the vehicle to (0,0) and the heading angle psi to 0. In this new coordinate frame, the waypoints are fit to a 3rd order polynomia using polyfit.  With our new coordinate frame, computing errors and reference states is simplified as most terms the reference state (t=0) are equal to zero. 
 
-### Actuator Accomodation and Pre-Processing:
+```C++
+double x0 = 0;
+double y0 = 0;
+double psi0 = 0;
+double v0 = v*0.44704;  		// Converts mph to m/s
+double cte0 = coeffs[0]; 		// 0 order term of polynomial fit
+double epsi0 = -atan(coeffs[1]);// psi error is psi - the arc tangent of the first derivative of the line function 
+```
 
-The acceleration term was given special accomodations due to the fact that the simulator accepts a -1 to 1 throttle value and it does not adequately represent the response the vehicle. By measuring the response of the vehicle to full throttle over the course of a second a rough estimate of full throttle acceleration was calculated to be between 6 and 5 m/s^2 at low speeds.  This was done by displaying the speed and time at each update.
+Code comments in main.cpp describe all of the simplification that the zero-value terms bring for the t=1 case.  The resulting state is provided below.  Note that the calculation for epsi1 is simplified by avoiding duplicate calculation and directly referencing psi1. 
+
+```c++
+double x1 = v0 * dt; 
+double y1 = 0;
+double psi1 = (v0 * delta0 * dt / Lf);
+double v1 = v0 + a0 * dt
+double cte1 = cte0 + (v0 * sin(epsi0) * dt);
+double epsi1 = -atan(coeffs[1]) + psi1;
+```
+
+
+
+### Actuator Accomodation:
+
+As described in the project notes, the steering values returned from the simulator are provided in radians but steering angle is requested by providing a value of -1 to 1. This is scaled by the radian equivalent of 25 degrees.  The sign of the value is also opposite the model coordinates so a -1 is mutilpied on the values returned and sent to allow the model equations to remain unchanged. 
+
+The acceleration term was given special accomodations due to the fact that the simulator accepts a -1 to 1 throttle value and it does not adequately represent the response the vehicle. By measuring the response of the vehicle to full throttle over the course of a second a rough estimate of full throttle acceleration was calculated to be between 6 and 5 m/s^2 at low speeds.  This was done by displaying the speed and time at each update. 
 
 Inside the repository for the Unity simulator there is a vehicle with a full torque output of 2500Nm and a mass of 1000kg. When accounting for wheel radius (0.37m), the proper conversion from throttle to acceleration is defined. 
 
@@ -42,7 +91,11 @@ The inverse of this is used to calculate the throttle value sent to the simulato
 double throttle_value = out.A[0]*1000/(2500/0.37);
 ```
 
-This extra step was deemed to be necessary after converting the speed units returned from mph to m/s.  Position is reported back from the simulator are in meters so this was done to make the model units align.  The vehicle parameters that matched the measured acceleration also had a drag factor of 0.1 Per an explanation on the Unity forums (https://forum.unity.com/threads/drag-factor-what-is-it.85504/), accounting for drag leads to the following calculation for v(t+1)
+This extra step was deemed to be necessary after converting the speed units returned from mph to m/s.  Position is reported back from the simulator are in meters so this was done to make the model units align.  
+
+The vehicle parameters that matched the measured acceleration also had a drag factor of 0.1 Per an explanation on the Unity forums (https://forum.unity.com/threads/drag-factor-what-is-it.85504/), accounting for drag leads to the following calculation for v(t+1).
+
+Since I was trying to get the car around the track as aggressively as possible, I decided to include this as its effect increases as you increase speed. 
 
 ```c++
 // Base Equation: v1 = (v0 + a0 * dt)
@@ -52,7 +105,9 @@ double v1 = (v0 + a0 * dt_lag) * (1 - drag*dt_lag);
 
 
 
-### 
+
+
+
 
 
 ## Original Udacity Content Below

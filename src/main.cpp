@@ -137,13 +137,7 @@ int main() {
           // psi is also assumed to be zero in our new coordinate frame. 
           // the arc tangent of derivative of the polynomial evaluated at psi provides 
           double epsi = -atan(coeffs[1]);
-          // Eigen::VectorXd state1(6);
-          // state1 << 0, 0, 0, v, cte, epsi;
-
-          // create output variable  
-          //MPC_Output out1;
-          //out1.fill(mpc.Solve(state1,coeffs));
-
+          
           /* solve for state at 'dt' seconds into the future to account for latency
           */
           //Create values for intermediate state to compensate for delay;
