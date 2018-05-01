@@ -16,16 +16,16 @@ Cross track error and orientation error are calculated using the equations below
 
 ![](psi_er_.png)
 
-Those 6 terms define the state used in the model. 
-x,y	:  	current vehicle position incartesian coordinates, meters
-psi	: 	orientation angle of vehicle in coordinate frame, radians
-v	: 	longitudinal velocity, meters per second
-cte	: 	cross-track error, meters
-epsi	: 	orientation error, radians
+Those 6 terms define the state used in the model.</br>
+**x,y	:**  	current vehicle position incartesian coordinates, meters</br>
+**psi	:** 	orientation angle of vehicle in coordinate frame, radians</br>
+**v	:** 	longitudinal velocity, meters per second</br>
+**cte	:** 	cross-track error, meters</br>
+**epsi	:** 	orientation error, radians</br>
 
-Actuator terms, delta and a, represent the steering angle and acceleration values for the model. 
-delta: 	steering angle, radians
-a	: 	acceleration, meters per second^2
+Actuator terms, delta and a, represent the steering angle and acceleration values for the model. </br>
+**delta:** 	steering angle, radians</br>
+**a	:** 	acceleration, meters per second^2</br>
 
 The term Lf defines the characteristic length of the vehicle used to compute the change in orientation from steering angle. 
 
@@ -40,7 +40,6 @@ Increasing N to 11 allowed for a slightly longer projection into the future. I a
 To fit to the track waypoints, a coordinate transformation is done based on the vehicle position returned from the simulator.
 
 ```c++
-// Performs Coordinate Transformation to place the 6 waypoint values into vehicle coordinate frame. 
 for(int i = 0; i < ptsx.size();i++){
 	double shift_x=ptsx[i]-px;
     double shift_y=ptsy[i]-py;
@@ -51,7 +50,7 @@ for(int i = 0; i < ptsx.size();i++){
 
 Doing this coordinate transformation resets the position of the vehicle to (0,0) and the heading angle psi to 0. In this new coordinate frame, the waypoints are fit to a 3rd order polynomia using polyfit.  With our new coordinate frame, computing errors and reference states is simplified as most terms the reference state (t=0) are equal to zero. 
 
-```C++
+```c++
 double x0 = 0;
 double y0 = 0;
 double psi0 = 0;
@@ -60,7 +59,7 @@ double cte0 = coeffs[0]; 		// 0 order term of polynomial fit
 double epsi0 = -atan(coeffs[1]);// psi error is psi - the arc tangent of the first derivative of the line function 
 ```
 
-Code comments in main.cpp describe all of the simplification that the zero-value terms bring for the t=1 case.  The resulting state is provided below.  Note that the calculation for epsi1 is simplified by avoiding duplicate calculation and directly referencing psi1. 
+Code comments in main.cpp describe all of the simplification that the zero-value terms bring for the t=1 case for latency correction.  The resulting state is provided below.  Note that the calculation for epsi1 is simplified by avoiding duplicate calculation and directly referencing psi1. 
 
 ```c++
 double x1 = v0 * dt; 
@@ -93,21 +92,73 @@ double throttle_value = out.A[0]*1000/(2500/0.37);
 
 This extra step was deemed to be necessary after converting the speed units returned from mph to m/s.  Position is reported back from the simulator are in meters so this was done to make the model units align.  
 
-The vehicle parameters that matched the measured acceleration also had a drag factor of 0.1 Per an explanation on the Unity forums (https://forum.unity.com/threads/drag-factor-what-is-it.85504/), accounting for drag leads to the following calculation for v(t+1).
-
-Since I was trying to get the car around the track as aggressively as possible, I decided to include this as its effect increases as you increase speed. 
+The vehicle parameters that matched the measured acceleration also had a drag factor of 0.1.  Since I was trying to get the car around the track as aggressively as possible, I decided to include this as its effect increases as you increase speed. Per an explanation on the Unity forums (https://forum.unity.com/threads/drag-factor-what-is-it.85504/), accounting for drag leads to the following calculation for v(t+1).
 
 ```c++
 // Base Equation: v1 = (v0 + a0 * dt)
 // Adding drag term to v1 calculation
-double v1 = (v0 + a0 * dt_lag) * (1 - drag*dt_lag);
+double v1 = (v0 + a0 * dt) * (1 - drag*dt);
 ```
 
+###Model Predictive Control 
 
+Using the state equations provided above, and the Ipopt optimization package included with the project repo, an MPC controller was implemented to define actuator outputs to drive the vehicle around the track. 
 
+####Latency Compensation
 
+To compensate with the required 100ms control latency, an external iteration of the model is calculated using actuator values reported back from the simulator. The state is predicted forward in time using the simplified state equation code provided earlier. This predicts the state the car will be in when the actuation commands are executed. This creates a high probability that terms from the state prediction will accurate and relevant by the time they are received. 
 
+####Cost Functions for Path Optimization
 
+The base set of cost equations from the MPC Quizzes will provide a safe, stable control of the vehicle up to a certain certain speed. At that point, the ideal line described by the waypoints will hold back lap times and max speed. Since this is just a simulator with no consequences, that allows us to have some fun while getting a better understanding of each of the cost functions. The following sections describe the cost functions I used to influence the vehicle toward more of a 'racing line.' 
+
+######CTE and Orientation Error
+
+To provide the vehicle some freedom to cut the corners and avoid taking too far outside of a line, I decided to use the incremented variable, t, in the cost function to bias influence toward the end of that predicted path. Adding a 1 ensured that the reference state still had influence. 
+
+```c++
+for (int t = 0; t < int(N); t++) {
+	fg[0] += ((t+1)/N)*20*CppAD::pow(vars[cte_start + t], 2);
+    fg[0] += ((t+1)/N)*20*CppAD::pow(vars[epsi_start + t], 2); 
+    }
+```
+
+#######Velocity (No Changes)
+To allow for dynamic control of the velocity based on steering, only a light weight was put on velocity. Since it was a numerically larger value, a weight of 0.1 was adequate. This was verified by viewing the throttle values of 1 printed to the terminal. 
+
+#######Actuators, Magnitude (No Changes)
+To ensure smooth paths were taken, a large penalty was placed on high steering angles. Conversely, a small penalty was placed on large throttle values. 
+
+```c++
+    for (int t = 0; t < int(N) - 1; t++) {
+      fg[0] += 900*CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 0.1*CppAD::pow(vars[a_start + t], 2); 
+    }
+```
+
+#######Actuators, Incremental Change (No Changes)
+Again, to ensure smooth, consistent paths large penalty was placed to large changes in steering angle. 
+
+```
+   for (int t = 0; t < int(N) - 2; t++) {
+      fg[0] += 35000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 0.1*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+    }
+```
+
+#######Speed Based on Steering Input a.k.a. Braking Into Hard Corners 
+I want to accelerate or slow the vehicle based on the future steering angle values to allow the vehicle to hold the line without error. I also don't want to heavily penalize the current steering angle in the event that the vehicle is at corner exit.
+
+To achieve this, a penalty is accumulated by multiplying the velocity at t+1 (the only output state used) by the steering angle at all other predicted states.
+
+```c++
+for (int t = 0; t < int(N) - 1; t++) {
+     fg[0] += 18*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
+    };
+``` 
+
+######Euclidean Distance 
+In order to stabilize the paths taken and push those paths toward the inside lines during long sweeping turns, a Euclidean distance constraint was added to the system as well. This is likely the least important cost function relative to the others and a deeper mathematical analysis might show that this may not be needed.  
 
 
 ## Original Udacity Content Below

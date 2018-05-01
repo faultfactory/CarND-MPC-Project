@@ -24,7 +24,7 @@ const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
-double ref_v = 60;
+double ref_v = 58;
 
 
 
@@ -87,7 +87,7 @@ class FG_eval {
      // The errors induce an oscillation that takes time to damp out so by 
      // reducing speed, the scope of that error can be reduced.
      // I only target
-      fg[0] += 17*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
+      fg[0] += 18*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
     };
 
     //Adding Euclidean distance here try and promote taking inside lines. Effect is subtle but the delays 
@@ -152,7 +152,7 @@ class FG_eval {
       fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
       fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
       fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 * dt/ Lf );
-      fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
+      fg[1 + v_start + t] = v1 - (v0 + a0 * dt)*(1-0.1*dt);
       fg[1 + cte_start + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
       fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * delta0 * dt / Lf );
     }
