@@ -123,10 +123,10 @@ for (int t = 0; t < int(N); t++) {
     }
 ```
 
-####### Velocity (No Changes)
+###### Velocity (No Changes)
 To allow for dynamic control of the velocity based on steering, only a light weight was put on velocity. Since it was a numerically larger value, a weight of 0.1 was adequate. This was verified by viewing the throttle values of 1 printed to the terminal. 
 
-####### Actuators, Magnitude (No Changes)
+###### Actuators, Magnitude (No Changes)
 To ensure smooth paths were taken, a large penalty was placed on high steering angles. Conversely, a small penalty was placed on large throttle values. 
 
 ```c++
@@ -136,7 +136,7 @@ To ensure smooth paths were taken, a large penalty was placed on high steering a
     }
 ```
 
-####### Actuators, Incremental Change (No Changes)
+###### Actuators, Incremental Change (No Changes)
 Again, to ensure smooth, consistent paths large penalty was placed to large changes in steering angle. 
 
 ```
@@ -146,7 +146,7 @@ Again, to ensure smooth, consistent paths large penalty was placed to large chan
     }
 ```
 
-####### Speed Based on Steering Input a.k.a. Braking Into Hard Corners 
+###### Speed Based on Steering Input a.k.a. Braking Into Hard Corners 
 I want to accelerate or slow the vehicle based on the future steering angle values to allow the vehicle to hold the line without error. I also don't want to heavily penalize the current steering angle in the event that the vehicle is at corner exit.
 
 To achieve this, a penalty is accumulated by multiplying the velocity at t+1 (the only output state used) by the steering angle at all other predicted states.
