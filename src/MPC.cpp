@@ -86,7 +86,7 @@ class FG_eval {
      // the model we're using doesn't adequately comprehend high speed corners, so slow down ahead of time
      // The errors induce an oscillation that takes time to damp out so by 
      // reducing speed, the scope of that error can be reduced.
-     // I only target
+     // I only target the first speed value out of the MPC
       fg[0] += 18*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
     };
 

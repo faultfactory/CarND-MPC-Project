@@ -100,19 +100,19 @@ The vehicle parameters that matched the measured acceleration also had a drag fa
 double v1 = (v0 + a0 * dt) * (1 - drag*dt);
 ```
 
-###Model Predictive Control 
+### Model Predictive Control 
 
 Using the state equations provided above, and the Ipopt optimization package included with the project repo, an MPC controller was implemented to define actuator outputs to drive the vehicle around the track. 
 
-####Latency Compensation
+#### Latency Compensation
 
 To compensate with the required 100ms control latency, an external iteration of the model is calculated using actuator values reported back from the simulator. The state is predicted forward in time using the simplified state equation code provided earlier. This predicts the state the car will be in when the actuation commands are executed. This creates a high probability that terms from the state prediction will accurate and relevant by the time they are received. 
 
-####Cost Functions for Path Optimization
+#### Cost Functions for Path Optimization
 
 The base set of cost equations from the MPC Quizzes will provide a safe, stable control of the vehicle up to a certain certain speed. At that point, the ideal line described by the waypoints will hold back lap times and max speed. Since this is just a simulator with no consequences, that allows us to have some fun while getting a better understanding of each of the cost functions. The following sections describe the cost functions I used to influence the vehicle toward more of a 'racing line.' 
 
-######CTE and Orientation Error
+###### CTE and Orientation Error
 
 To provide the vehicle some freedom to cut the corners and avoid taking too far outside of a line, I decided to use the incremented variable, t, in the cost function to bias influence toward the end of that predicted path. Adding a 1 ensured that the reference state still had influence. 
 
@@ -123,10 +123,10 @@ for (int t = 0; t < int(N); t++) {
     }
 ```
 
-#######Velocity (No Changes)
+####### Velocity (No Changes)
 To allow for dynamic control of the velocity based on steering, only a light weight was put on velocity. Since it was a numerically larger value, a weight of 0.1 was adequate. This was verified by viewing the throttle values of 1 printed to the terminal. 
 
-#######Actuators, Magnitude (No Changes)
+####### Actuators, Magnitude (No Changes)
 To ensure smooth paths were taken, a large penalty was placed on high steering angles. Conversely, a small penalty was placed on large throttle values. 
 
 ```c++
@@ -136,7 +136,7 @@ To ensure smooth paths were taken, a large penalty was placed on high steering a
     }
 ```
 
-#######Actuators, Incremental Change (No Changes)
+####### Actuators, Incremental Change (No Changes)
 Again, to ensure smooth, consistent paths large penalty was placed to large changes in steering angle. 
 
 ```
@@ -146,7 +146,7 @@ Again, to ensure smooth, consistent paths large penalty was placed to large chan
     }
 ```
 
-#######Speed Based on Steering Input a.k.a. Braking Into Hard Corners 
+####### Speed Based on Steering Input a.k.a. Braking Into Hard Corners 
 I want to accelerate or slow the vehicle based on the future steering angle values to allow the vehicle to hold the line without error. I also don't want to heavily penalize the current steering angle in the event that the vehicle is at corner exit.
 
 To achieve this, a penalty is accumulated by multiplying the velocity at t+1 (the only output state used) by the steering angle at all other predicted states.
@@ -157,7 +157,7 @@ for (int t = 0; t < int(N) - 1; t++) {
     };
 ``` 
 
-######Euclidean Distance 
+###### Euclidean Distance 
 In order to stabilize the paths taken and push those paths toward the inside lines during long sweeping turns, a Euclidean distance constraint was added to the system as well. This is likely the least important cost function relative to the others and a deeper mathematical analysis might show that this may not be needed.  
 
 
