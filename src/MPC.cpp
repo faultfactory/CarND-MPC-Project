@@ -7,9 +7,8 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-static size_t N = 11;
+static size_t N = 12;
 double dt = 0.12  ;
-
 // This value assumes the model presented in the classroom is used.
 //
 // It was obtained by measuring the radius formed by running the vehicle in the
@@ -74,7 +73,7 @@ class FG_eval {
 
         // Minimize the value gap between sequential actuations.
     for (int t = 0; t < int(N) - 2; t++) {
-      fg[0] += 35000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 37000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
       fg[0] += 0.1*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
@@ -92,7 +91,7 @@ class FG_eval {
 
     //Adding Euclidean distance here try and promote taking inside lines. Effect is subtle but the delays 
     // transition from the inside line to main path in long sweeping curve
-    fg[0] +=20000*(CppAD::pow(vars[x_start+N]-vars[x_start],2)+CppAD::pow(vars[y_start+N]-vars[y_start],2));
+    //fg[0] +=20000*(CppAD::pow(vars[x_start+N]-vars[x_start],2)+CppAD::pow(vars[y_start+N]-vars[y_start],2));
     
     
 
