@@ -133,6 +133,7 @@ int main() {
           // since the transformed coordinates use the vehicle frame as the origin, px and py are
           // considered to be zero. 
           double cte = coeffs[0];
+          cout<<"Cte"<<cte<<endl;
           // calcualte orientation error
           // psi is also assumed to be zero in our new coordinate frame. 
           // the arc tangent of derivative of the polynomial evaluated at psi provides 
@@ -246,7 +247,7 @@ int main() {
           
           
           std::cout<<"vel m/s: :"<<v<<std::endl;
-          std::cout<<"throttle_Value:"<<throttle_value<<std::endl;
+          //std::cout<<"throttle_Value:"<<throttle_value<<std::endl;
 
         }
       } else {

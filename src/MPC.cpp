@@ -25,8 +25,6 @@ const double Lf = 2.67;
 // The reference velocity is set to 40 mph.
 double ref_v = 58;
 
-
-
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
 // when one variable starts and another ends to make our lifes easier.
@@ -57,14 +55,15 @@ class FG_eval {
     // The part of the cost based on the reference state.
     
     for (int t = 0; t < int(N); t++) {
-      fg[0] += ((t+1)/N)*20*CppAD::pow(vars[cte_start + t], 2);
       fg[0] += ((t+1)/N)*20*CppAD::pow(vars[epsi_start + t], 2); 
+    
+      fg[0] += ((t+3)/N)*10*CppAD::pow(vars[cte_start + t], 2);
+    
+      fg[0] += 1*CppAD::pow(vars[v_start + t]-ref_v, 2);   
+    
     }    
 
-    for (int t = 0; t < int(N); t++) {
-      fg[0] += 0.1*CppAD::pow(vars[v_start + t]-ref_v, 2);
-    }
-    
+  
     // Minimize the use of actuators.
     for (int t = 0; t < int(N) - 1; t++) {
       fg[0] += 900*CppAD::pow(vars[delta_start + t], 2);
@@ -73,11 +72,12 @@ class FG_eval {
 
         // Minimize the value gap between sequential actuations.
     for (int t = 0; t < int(N) - 2; t++) {
-      fg[0] += 39000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 1000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
       fg[0] += 0.1*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
 
+        
         
     ////////////////////////////////////
 
@@ -86,13 +86,19 @@ class FG_eval {
      // The errors induce an oscillation that takes time to damp out so by 
      // reducing speed, the scope of that error can be reduced.
      // I only target the first speed value out of the MPC
-      fg[0] += 18*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
+      //fg[0] += 5*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
     };
 
     //Adding Euclidean distance here try and promote taking inside lines. Effect is subtle but the delays 
     // transition from the inside line to main path in long sweeping curve
     //fg[0] +=20000*(CppAD::pow(vars[x_start+N]-vars[x_start],2)+CppAD::pow(vars[y_start+N]-vars[y_start],2));
     
+    //Attempting a lateral acceleration constraint
+    for (int t = 0; t<int(N) ; t++){
+      fg[0] += 0.1*CppAD::pow(vars[v_start+t]*vars[v_start+t]*vars[delta_start+t]/Lf,2);
+      }
+
+
     
 
     
@@ -212,7 +218,7 @@ CppAD::ipopt::solve_result<CPPAD_TESTVECTOR(double)> MPC::Solve(Eigen::VectorXd 
   // Acceleration/decceleration upper and lower limits.
   // NOTE: Feel free to change this to something else.
   for (int i = a_start; i < int(n_vars); i++) {
-    vars_lowerbound[i] = -7.0;
+    vars_lowerbound[i] = -3.0;
     vars_upperbound[i] = 7.0;
   }
   
