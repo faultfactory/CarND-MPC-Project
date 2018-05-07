@@ -7,7 +7,7 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-static size_t N = 12;
+static size_t N = 15;
 double dt = 0.12  ;
 // This value assumes the model presented in the classroom is used.
 //
@@ -55,10 +55,10 @@ class FG_eval {
     fg[0] = 0;
     
     // The part of the cost based on the reference state.
-    
+    double a = 8;
     for (int t = 0; t < int(N); t++) {
-      fg[0] += ((t+1)/N)*20*CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += ((t+1)/N)*20*CppAD::pow(vars[epsi_start + t], 2); 
+      fg[0] += ((a*log(1+t))/(1+a*log(1+t)))*20*CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += ((a*log(1+t))/(1+a*log(1+t)))*20*CppAD::pow(vars[epsi_start + t], 2); 
     }    
 
     for (int t = 0; t < int(N); t++) {
@@ -86,7 +86,7 @@ class FG_eval {
      // The errors induce an oscillation that takes time to damp out so by 
      // reducing speed, the scope of that error can be reduced.
      // I only target the first speed value out of the MPC
-      fg[0] += 18*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
+      fg[0] += 20*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
     };
 
     //Adding Euclidean distance here try and promote taking inside lines. Effect is subtle but the delays 
