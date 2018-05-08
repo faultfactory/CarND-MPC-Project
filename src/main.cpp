@@ -158,7 +158,7 @@ int main() {
           // Drag is not a direct calculation based on physics, but rather a de-rating of 
           // the resulting velocity.
           //https://forum.unity.com/threads/drag-factor-what-is-it.85504/
-          double a0 = thrtl0*((thrtl0>0)*2500 +(thrtl0<0)*20000)/(1000*0.37);
+          double a0 = thrtl0*((thrtl0>0)*2500/0.37 +(thrtl0<0)*20000/0.3525)/(1000);
           double drag = 0.1; // based on simulation repo
 
           // Base Equation:  x1 = x0 + v0 * cos(psi0) * dt_lag;
@@ -190,7 +190,7 @@ int main() {
 
 
           double steer_value = -out.DELTA[0]/(deg2rad(25));
-          double throttle_value = (1000*0.37)*out.A[0]*((out.A[0]>0)*2500+(out.A[0]<0)*20000);
+          double throttle_value = (1000)*out.A[0]*((out.A[0]>0)*2500*0.37+(out.A[0]<0)*20000*.3525);
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
