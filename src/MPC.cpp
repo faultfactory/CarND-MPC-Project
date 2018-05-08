@@ -25,7 +25,8 @@ const double Lf = 2.67;
 // The reference velocity is set to 40 mph.
 double ref_v = 58;
 
-
+double lim_cte = 4.5;
+double k = 1;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -62,6 +63,10 @@ class FG_eval {
     }    
 
     for (int t = 0; t < int(N); t++) {
+      fg[0] += 100/(1+CppAD::exp(-k*(CppAD::abs(vars[cte_start + t])-lim_cte)));
+    }
+
+    for (int t = 0; t < int(N); t++) {
       fg[0] += 0.1*CppAD::pow(vars[v_start + t]-ref_v, 2);
     }
     
@@ -73,7 +78,7 @@ class FG_eval {
 
         // Minimize the value gap between sequential actuations.
     for (int t = 0; t < int(N) - 2; t++) {
-      fg[0] += 39000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      //fg[0] += 39000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
       fg[0] += 0.1*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
@@ -86,7 +91,7 @@ class FG_eval {
      // The errors induce an oscillation that takes time to damp out so by 
      // reducing speed, the scope of that error can be reduced.
      // I only target the first speed value out of the MPC
-      fg[0] += 18*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
+      //fg[0] += 18*CppAD::pow((vars[v_start+1]*vars[delta_start+t]),2);     
     };
 
     //Adding Euclidean distance here try and promote taking inside lines. Effect is subtle but the delays 
